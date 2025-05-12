@@ -27,117 +27,34 @@ const connectDB = async () => {
   return true;
 };
 
-// Export the handler function
-module.exports = async (req, res) => {
-  // Handle CORS preflight request
+// Minimal login handler for debugging
+module.exports = (req, res) => {
+  // Set CORS headers for all responses
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+  // Handle OPTIONS request (preflight)
   if (req.method === "OPTIONS") {
-    res.status(200).end();
-    return;
+    return res.status(200).end();
   }
 
-  // Validate request method
+  // Only allow POST method
   if (req.method !== "POST") {
     return res.status(405).json({
       success: false,
-      message:
-        "Method not allowed. Only POST requests are supported for this endpoint.",
+      message: `Method ${req.method} not allowed. Only POST requests are supported.`,
     });
   }
 
-  try {
-    // Connect to database
-    const dbConnected = await connectDB();
-    if (!dbConnected) {
-      return res.status(500).json({
-        success: false,
-        message: "Database connection failed",
-      });
-    }
-
-    const { username, password } = req.body;
-
-    // Validate input
-    if (!username || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Please provide username and password",
-      });
-    }
-
-    // Import User model here to ensure it's loaded after mongoose connection
-    const User = require("../../server/src/models/user.model");
-    const StaffActivity = require("../../server/src/models/staffActivity.model");
-
-    // Check for user
-    const user = await User.findOne({ username }).select("+password");
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid credentials",
-      });
-    }
-
-    // Check if account is active
-    if (!user.active) {
-      return res.status(401).json({
-        success: false,
-        message:
-          "Your account has been deactivated. Please contact an administrator",
-      });
-    }
-
-    // Check if password matches
-    const isMatch = await user.matchPassword(password);
-    if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid credentials",
-      });
-    }
-
-    // Generate token
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      config.jwtSecret || process.env.JWT_SECRET,
-      { expiresIn: config.jwtExpire || "30d" }
-    );
-
-    // Log activity
-    try {
-      await StaffActivity.create({
-        staff: user._id,
-        actionType: "login",
-        details: {
-          username: user.username,
-          role: user.role,
-        },
-      });
-    } catch (err) {
-      console.error("Failed to log staff activity:", err.message);
-      // Continue anyway - this is not critical
-    }
-
-    // Return successful response
-    return res.status(200).json({
-      success: true,
-      token,
-      data: {
-        _id: user._id,
-        username: user.username,
-        role: user.role,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        phone: user.phone,
-        languagePreference: user.languagePreference,
-      },
-    });
-  } catch (error) {
-    console.error("Login error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Server error during login",
-      error: process.env.NODE_ENV === "development" ? error.message : {},
-    });
-  }
+  // Return a mock successful response
+  return res.status(200).json({
+    success: true,
+    token: "debug-token",
+    data: {
+      _id: "debug-id",
+      username: "debug-user",
+      role: "admin",
+    },
+  });
 };
