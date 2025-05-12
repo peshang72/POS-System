@@ -157,14 +157,19 @@ exports.login = asyncHandler(async (req, res, next) => {
   const token = user.getSignedJwtToken();
 
   // Log activity
-  await StaffActivity.create({
-    staff: user._id,
-    actionType: "login",
-    details: {
-      username: user.username,
-      role: user.role,
-    },
-  });
+  try {
+    await StaffActivity.create({
+      staff: user._id,
+      actionType: "login",
+      details: {
+        username: user.username,
+        role: user.role,
+      },
+    });
+  } catch (err) {
+    logger.error(`Error logging staff activity: ${err.message}`);
+    // Continue with login process even if activity logging fails
+  }
 
   res.status(200).json({
     success: true,
