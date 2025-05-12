@@ -10,9 +10,26 @@
       "maxDuration": 10
     }
   },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "X-Requested-With, Content-Type, Accept, Authorization"
+        }
+      ]
+    }
+  ],
   "routes": [
     {
       "src": "/api/auth/login",
+      "methods": ["POST", "OPTIONS"],
       "dest": "/api/auth/login.js"
     },
     {

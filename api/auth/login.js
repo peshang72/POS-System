@@ -27,34 +27,71 @@ const connectDB = async () => {
   return true;
 };
 
-// Minimal login handler for debugging
+// Simple login handler that logs raw request and returns mock data
 module.exports = (req, res) => {
-  // Set CORS headers for all responses
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  // Log full request information for debugging
+  console.log("Login handler invoked");
+  console.log("HTTP method:", req.method);
+  console.log("Request headers:", req.headers);
 
-  // Handle OPTIONS request (preflight)
+  // Handle preflight CORS request
   if (req.method === "OPTIONS") {
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader(
+      "Access-Control-Allow-Methods",
+      "GET,OPTIONS,PATCH,DELETE,POST,PUT"
+    );
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization"
+    );
     return res.status(200).end();
   }
 
-  // Only allow POST method
+  // Only allow POST method for this endpoint
   if (req.method !== "POST") {
+    console.log("Method not allowed:", req.method);
     return res.status(405).json({
       success: false,
-      message: `Method ${req.method} not allowed. Only POST requests are supported.`,
+      message: `Method ${req.method} not allowed for this endpoint`,
     });
   }
 
-  // Return a mock successful response
-  return res.status(200).json({
-    success: true,
-    token: "debug-token",
-    data: {
-      _id: "debug-id",
-      username: "debug-user",
-      role: "admin",
-    },
+  // Parse the request body
+  let body = "";
+
+  req.on("data", (chunk) => {
+    body += chunk.toString();
+  });
+
+  req.on("end", () => {
+    console.log("Request body:", body);
+
+    try {
+      // Parse the JSON body
+      const data = JSON.parse(body);
+      console.log("Parsed body:", data);
+
+      // Return a mock successful response
+      return res.status(200).json({
+        success: true,
+        token: "debug-token-" + Date.now(),
+        data: {
+          _id: "mock-user-id",
+          username: data.username || "user",
+          role: "admin",
+          firstName: "Test",
+          lastName: "User",
+          languagePreference: "en",
+        },
+      });
+    } catch (err) {
+      console.error("Error parsing request body:", err);
+      return res.status(400).json({
+        success: false,
+        message: "Invalid request body",
+      });
+    }
   });
 };

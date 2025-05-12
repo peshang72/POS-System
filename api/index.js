@@ -1,52 +1,75 @@
-// Server-side API handler for Vercel
+// Simple API handler for Vercel
 const express = require("express");
 const cors = require("cors");
-const morgan = require("morgan");
-const passport = require("passport");
-const { json, urlencoded } = require("express");
+const bodyParser = require("body-parser");
 
-// Import routes
-const authRoutes = require("../server/src/routes/auth.routes");
-const productRoutes = require("../server/src/routes/product.routes");
-const categoryRoutes = require("../server/src/routes/category.routes");
-const transactionRoutes = require("../server/src/routes/transaction.routes");
-const customerRoutes = require("../server/src/routes/customer.routes");
-const settingRoutes = require("../server/src/routes/setting.routes");
-const dashboardRoutes = require("../server/src/routes/dashboard.routes");
-const loyaltyRoutes = require("../server/src/routes/loyalty.routes");
-
-// Initialize Express app
+// Create Express app
 const app = express();
 
-// Middleware
-app.use(cors());
-app.use(json());
-app.use(urlencoded({ extended: true }));
-app.use(morgan("tiny"));
+// Configure middleware
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
-// Initialize Passport
-app.use(passport.initialize());
-require("../server/src/middleware/passport");
+// Parse JSON bodies
+app.use(bodyParser.json());
 
-// API Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/products", productRoutes);
-app.use("/api/categories", categoryRoutes);
-app.use("/api/transactions", transactionRoutes);
-app.use("/api/customers", customerRoutes);
-app.use("/api/settings", settingRoutes);
-app.use("/api/dashboard", dashboardRoutes);
-app.use("/api/loyalty", loyaltyRoutes);
+// Default route handler
+app.all("*", (req, res) => {
+  console.log(`API request: ${req.method} ${req.url}`);
 
-// Error handler middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(err.statusCode || 500).json({
-    success: false,
-    message: err.message || "Internal Server Error",
-    error: {},
+  // Return a response based on the path
+  if (req.path.startsWith("/api/auth/")) {
+    if (req.path === "/api/auth/me") {
+      return res.status(200).json({
+        success: true,
+        data: {
+          _id: "mock-user-id",
+          username: "testuser",
+          role: "admin",
+          firstName: "Test",
+          lastName: "User",
+          languagePreference: "en",
+        },
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Auth endpoint reached",
+      path: req.path,
+    });
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: "API handler reached",
+    method: req.method,
+    path: req.path,
   });
 });
 
-// Export the Express API
-module.exports = app;
+// Export the serverless function handler
+module.exports = (req, res) => {
+  // Handle CORS preflight
+  if (req.method === "OPTIONS") {
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader(
+      "Access-Control-Allow-Methods",
+      "GET,OPTIONS,PATCH,DELETE,POST,PUT"
+    );
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization"
+    );
+    return res.status(200).end();
+  }
+
+  // Pass request to Express app
+  return app(req, res);
+};
