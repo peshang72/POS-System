@@ -1,4 +1,4 @@
-# Gaming Store Point-of-Sale (POS) System PRD
+# Lîstik - Point-of-Sale (POS) System PRD
 
 ## 1. Elevator Pitch
 

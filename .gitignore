@@ -1,0 +1,62 @@
+# Dependencies
+node_modules/
+*/node_modules/
+/.pnp
+.pnp.js
+
+# Production build files
+/client/dist/
+/client/build/
+/server/build/
+/electron/dist/
+/electron/build/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+client/.env
+server/.env
+electron/.env
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+*.log
+
+# Editor directories and files
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# MongoDB data
+/data/db/
+
+# Vercel deployment
+.vercel
+
+# Testing
+/coverage
+
+# Electron packaging
+/electron/out/
+/electron/release/
+/electron/dist/
+/electron/node_modules/
+
+# Temp files
+*.tmp
+.temp
+.cache 

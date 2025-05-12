@@ -1,0 +1,50 @@
+{
+  "name": "pos-system",
+  "version": "1.0.0",
+  "description": "Gaming Store Point-of-Sale System - A comprehensive POS system designed specifically for gaming stores",
+  "main": "electron/src/main.js",
+  "scripts": {
+    "start": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd server && npm run dev",
+    "client": "cd client && npm run dev",
+    "electron": "cd electron && npm start",
+    "electron:dev": "concurrently \"npm run server\" \"npm run client\" \"cd electron && npm run dev\"",
+    "desktop": "concurrently \"npm run server\" \"cd electron && npm start\"",
+    "install-all": "npm install && cd server && npm install && cd ../client && npm install && cd ../electron && npm install",
+    "setup-electron": "node electron/install.js",
+    "setup-desktop": "node electron/setup.js",
+    "fix-electron-deps": "cd electron && npm run fix-deps",
+    "build:client": "cd client && npm run build",
+    "build:server": "cd server && npm run build",
+    "build:electron": "npm run build:client && npm run build:server && cd electron && npm run build",
+    "build:win": "npm run build:client && npm run build:server && cd electron && npm run build:win",
+    "test": "concurrently \"cd server && npm test\" \"cd client && npm test\"",
+    "dev": "npm run start"
+  },
+  "keywords": [
+    "pos",
+    "gaming-store",
+    "inventory-management",
+    "sales",
+    "mern-stack",
+    "electron"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "concurrently": "^8.2.2",
+    "date-fns": "^4.1.0",
+    "react-day-picker": "^9.6.7",
+    "shadcn-ui": "^0.9.5",
+    "tailwind-merge": "^3.2.0"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "http-proxy-middleware": "^3.0.5",
+    "mongodb": "^6.15.0",
+    "winston": "^3.17.0"
+  }
+}

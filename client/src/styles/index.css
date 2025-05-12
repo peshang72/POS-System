@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply antialiased;
+  }
+
+  body {
+    @apply bg-primary-bg text-white font-inter;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-rajdhani font-bold;
+  }
+
+  h1 {
+    @apply text-2xl;
+  }
+
+  h2 {
+    @apply text-xl;
+  }
+
+  h3 {
+    @apply text-lg;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-md font-medium transition-all duration-200 font-rajdhani;
+  }
+
+  .btn-primary {
+    @apply bg-accent hover:bg-opacity-80 text-white;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary-bg hover:bg-opacity-80 text-white;
+  }
+
+  .btn-success {
+    @apply bg-success hover:bg-opacity-80 text-black;
+  }
+
+  .btn-danger {
+    @apply bg-error hover:bg-opacity-80 text-white;
+  }
+
+  .input {
+    @apply px-3 py-2 bg-secondary-bg rounded-md border border-gray-700 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent;
+  }
+
+  .card {
+    @apply bg-secondary-bg rounded-lg p-4 shadow-md;
+  }
+
+  .sidebar-icon {
+    @apply p-3 rounded-md hover:bg-accent hover:bg-opacity-20 cursor-pointer transition-all duration-200;
+  }
+
+  /* For RTL support */
+  .rtl {
+    direction: rtl;
+  }
+}
+
+/* Day picker custom styles */
+.rdp {
+  --rdp-accent-color: #7e3ff2 !important;
+  --rdp-background-color: rgba(126, 63, 242, 0.2) !important;
+  margin: 0 !important;
+}
+
+.rdp-day_selected {
+  background-color: var(--rdp-accent-color) !important;
+  color: white !important;
+}
+
+.rdp-button:hover:not([aria-disabled="true"]) {
+  background-color: rgba(126, 63, 242, 0.2) !important;
+}
+
+.rdp-day_today {
+  border: 1px solid var(--rdp-accent-color) !important;
+  background-color: transparent !important;
+}
+
+.rdp-head_cell,
+.rdp-caption_label {
+  color: #e5e7eb !important;
+}

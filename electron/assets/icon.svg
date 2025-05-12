@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="512" height="512" rx="64" fill="#3b82f6"/>
+  
+  <!-- POS Screen -->
+  <rect x="96" y="96" width="320" height="220" rx="8" fill="#f8fafc"/>
+  
+  <!-- Register Drawer -->
+  <rect x="116" y="346" width="280" height="70" rx="8" fill="#f8fafc"/>
+  
+  <!-- Buttons/Display -->
+  <rect x="136" y="136" width="240" height="40" rx="4" fill="#94a3b8"/>
+  <rect x="136" y="196" width="60" height="60" rx="4" fill="#94a3b8"/>
+  <rect x="216" y="196" width="60" height="60" rx="4" fill="#94a3b8"/>
+  <rect x="296" y="196" width="60" height="60" rx="4" fill="#94a3b8"/>
+  
+  <!-- Drawer Handle -->
+  <rect x="226" y="376" width="60" height="10" rx="2" fill="#94a3b8"/>
+</svg> 

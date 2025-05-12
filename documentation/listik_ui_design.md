@@ -1,4 +1,4 @@
-# Gaming Store POS System - User Interface Design Document
+# Lîstik - User Interface Design Document
 
 ## Layout Structure
 

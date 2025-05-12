@@ -1,0 +1,47 @@
+{
+  "name": "pos-system-desktop",
+  "version": "1.0.3",
+  "description": "Gaming Store POS System Desktop Application",
+  "main": "src/main.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/peshang72/POS-System.git"
+  },
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win --config electron-builder.yml",
+    "build:linux": "electron-builder --linux --config electron-builder.yml",
+    "build:all": "electron-builder -wl --config electron-builder.yml",
+    "publish": "electron-builder --publish always",
+    "publish:win": "electron-builder --win --publish always",
+    "publish:linux": "electron-builder --linux --publish always",
+    "fix-deps": "node fix-deps.js",
+    "setup": "node setup.js",
+    "manual-setup": "node manual-install.js"
+  },
+  "keywords": [
+    "pos",
+    "gaming-store",
+    "electron",
+    "desktop"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^29.0.1",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.gaming.pos",
+    "productName": "Gaming POS System",
+    "win": {
+      "target": "dir",
+      "signAndEditExecutable": false
+    }
+  },
+  "dependencies": {
+    "electron-updater": "6.6.2"
+  }
+}
