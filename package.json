@@ -18,7 +18,8 @@
     "build:server": "cd server && npm run build",
     "build:electron": "npm run build:client && npm run build:server && cd electron && npm run build",
     "build:win": "npm run build:client && npm run build:server && cd electron && npm run build:win",
-    "build:vercel": "cd client && npm ci && npx vite build && cd ../api && npm ci",
+    "prebuild:vercel": "node prebuild.js",
+    "build:vercel": "npm run prebuild:vercel && cd client && npm ci && npm install vite@5.1.5 @vitejs/plugin-react@4.2.1 --save-dev && cp ../vite-vercel.config.js vite.config.js && npx vite build && cd ../api && npm ci",
     "test": "concurrently \"cd server && npm test\" \"cd client && npm test\"",
     "dev": "npm run start"
   },
