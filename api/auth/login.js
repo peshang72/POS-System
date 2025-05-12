@@ -13,6 +13,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Set default values for environment variables for Vercel if they don't exist
+const JWT_SECRET = process.env.JWT_SECRET || "gaming_store_pos_secret_key_2024";
+const JWT_EXPIRE = process.env.JWT_EXPIRE || "1d";
+const MONGO_URI = process.env.MONGO_URI;
+
 // Try to load environment variables from server/.env
 try {
   // Check various possible paths for the .env file
@@ -50,12 +55,9 @@ const connectDB = async () => {
       // Log environment variables for debugging (Vercel logs)
       console.log("Environment check:");
       console.log("NODE_ENV:", process.env.NODE_ENV);
-      console.log("MONGO_URI exists:", !!process.env.MONGO_URI);
+      console.log("MONGO_URI exists:", !!MONGO_URI);
 
-      // Use environment variable first
-      const mongoURI = process.env.MONGO_URI;
-
-      if (!mongoURI) {
+      if (!MONGO_URI) {
         console.error(
           "CRITICAL ERROR: No MongoDB URI provided in environment variables"
         );
@@ -66,14 +68,14 @@ const connectDB = async () => {
       }
 
       // Log a redacted version of the connection string for debugging
-      const redactedURI = mongoURI.replace(
+      const redactedURI = MONGO_URI.replace(
         /(mongodb(\+srv)?:\/\/)([^:]+):([^@]+)@/,
         "$1***:***@"
       );
       console.log("Connecting to MongoDB:", redactedURI);
 
       try {
-        await mongoose.connect(mongoURI, {
+        await mongoose.connect(MONGO_URI, {
           useNewUrlParser: true,
           useUnifiedTopology: true,
           serverSelectionTimeoutMS: 10000, // Longer timeout for Vercel
@@ -221,11 +223,9 @@ module.exports = async (req, res) => {
     }
 
     // Generate token
-    const token = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET || "your_jwt_secret_key",
-      { expiresIn: process.env.JWT_EXPIRE || "1d" }
-    );
+    const token = jwt.sign({ id: user._id }, JWT_SECRET, {
+      expiresIn: JWT_EXPIRE,
+    });
 
     // Return success response
     return res.status(200).json({
@@ -248,6 +248,7 @@ module.exports = async (req, res) => {
       success: false,
       message: "Server error during login",
       error: err.message,
+      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
     });
   }
 };
