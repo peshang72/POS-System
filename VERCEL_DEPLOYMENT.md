@@ -1,96 +1,101 @@
 # Deploying the POS System to Vercel
 
-This guide explains how to deploy your POS system to Vercel for hosting on the web.
+This guide explains how to deploy your POS system to Vercel with the correct configuration.
 
 ## Prerequisites
 
 - A GitHub, GitLab, or Bitbucket account
 - Your POS system code pushed to a repository
 - A Vercel account (you can sign up at https://vercel.com using your GitHub/GitLab/Bitbucket account)
+- MongoDB Atlas account for the database
 
-## Deployment Options
+## Step 1: Fix Build Configuration
+
+Before deploying, make sure your build configuration is correct:
+
+1. Verify your `package.json` has the correct build script:
+
+```json
+"build:vercel": "cd client && npm ci && npx vite build && cd ../api && npm ci"
+```
+
+2. Verify your `vercel.json` configuration:
+
+```json
+{
+  "version": 2,
+  "buildCommand": "npm run build:vercel",
+  "outputDirectory": "client/dist",
+  "installCommand": "npm install",
+  "functions": {
+    "api/**/*.js": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  }
+  // Additional routes configuration...
+}
+```
+
+## Step 2: Set Up MongoDB Atlas
+
+1. Create a cluster in MongoDB Atlas
+2. Configure network access to allow connections from anywhere (for Vercel)
+3. Create a database user with read/write permissions
+4. Get your connection string that looks like:
+   ```
+   mongodb+srv://<username>:<password>@<cluster>.mongodb.net/<dbname>?retryWrites=true&w=majority
+   ```
+
+## Step 3: Deploy to Vercel
 
 ### Option 1: Deploy from GitHub (Recommended)
 
-This is the recommended approach as it:
-
-- Avoids file size limits for local deployments
-- Sets up continuous deployment when you push to your repository
-- Handles the build process on Vercel's servers
-
-1. Make sure your code is pushed to GitHub
-2. Run the deployment script:
-
-```bash
-./deploy-vercel.sh
-```
-
-3. Select option 1 for "Deploy from GitHub"
-4. Follow the prompts to link your project to Vercel if needed
-5. The deployment will trigger a build from your GitHub repository
-
-Alternatively, you can import your project directly through the Vercel dashboard:
-
-1. Go to https://vercel.com/new
-2. Import your GitHub repository
-3. Configure the project:
-   - Framework Preset: Vite
+1. Push your code to a GitHub repository
+2. Go to https://vercel.com/new
+3. Import your GitHub repository
+4. Configure the project settings:
    - Root Directory: ./
-   - Build Command: cd client && npm run build
+   - Build Command: npm run build:vercel
    - Output Directory: client/dist
-4. Add environment variables as needed (see below)
-5. Click "Deploy"
-
-### Option 2: Manual Deployment via Vercel CLI
-
-Use this method only for smaller projects:
-
-1. Run the deployment script:
-
-```bash
-./deploy-vercel.sh
-```
-
-2. Select option 2 for "Deploy from local files"
-3. Follow the prompts to log in to Vercel if needed
-
-### Option 3: Deployment via Vercel Web Interface
-
-1. Push your code to a GitHub/GitLab/Bitbucket repository
-2. Log in to your Vercel account at https://vercel.com
-3. Click "Add New..." > "Project"
-4. Select your repository from the list
-5. Configure your project settings:
-   - Framework Preset: Vite
-   - Root Directory: ./
-   - Build Command: cd client && npm run build
-   - Output Directory: client/dist
+5. Add the following environment variables:
+   - `MONGO_URI`: Your MongoDB Atlas connection string
+   - `JWT_SECRET`: A secure secret key for JWT authentication
+   - `JWT_EXPIRE`: JWT token expiration time (e.g., "1d")
+   - `JWT_COOKIE_EXPIRE`: JWT cookie expiration time in days (e.g., 1)
+   - `NODE_ENV`: production
 6. Click "Deploy"
 
-## Environment Variables
+### Option 2: Deploy using the CLI
 
-Make sure to add the following environment variables in your Vercel project settings:
+1. Run the deployment script:
+   ```bash
+   ./deploy-vercel.sh
+   ```
+2. Follow the prompts to complete the deployment
 
-- `MONGO_URI`: Your MongoDB connection string
-- `JWT_SECRET`: A secure secret key for JWT authentication
-- `JWT_EXPIRE`: JWT token expiration time (e.g., "1d")
-- `JWT_COOKIE_EXPIRE`: JWT cookie expiration time in days (e.g., 1)
+## Step 4: Verify Deployment
 
-You can add these in the Vercel dashboard under Project Settings > Environment Variables.
+1. Once deployed, visit your Vercel deployment URL
+2. Test login functionality to ensure database connection works
+3. Check that all pages load properly
 
-## Custom Domain Setup (Optional)
+## Troubleshooting Common Issues
 
-1. Go to your project in the Vercel dashboard
-2. Navigate to "Settings" > "Domains"
-3. Add your custom domain and follow the verification steps
+### Build Failures
 
-## Continuous Deployment
+- If you get `vite: command not found` errors, make sure your build script is using `npx vite build` instead of `npm run build`
+- Ensure all dependencies are properly installed with `npm ci`
 
-Vercel automatically sets up continuous deployment from your repository. Any push to your main branch will trigger a new deployment.
+### Database Connection Issues
 
-## Troubleshooting
+- Verify MongoDB Atlas network access allows connections from everywhere (0.0.0.0/0)
+- Confirm your connection string is correctly formatted in the environment variables
+- Check MongoDB Atlas user has the correct permissions
 
-- If you encounter build errors, check the build logs in the Vercel dashboard
-- Ensure your MongoDB connection string is correctly configured in environment variables
-- Make sure react-day-picker and other required dependencies are in your package.json
-- Check that your client build is generating the correct output in the `dist` directory
+### API Errors
+
+- Make sure your API routes are properly configured in vercel.json
+- Check environment variables are set correctly in Vercel project settings
+
+For additional help, check the Vercel logs from your project dashboard.

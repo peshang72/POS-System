@@ -1,50 +1,57 @@
 #!/bin/bash
 
-# Vercel deployment script for POS System
+echo "Preparing for Vercel Deployment..."
 
-echo "🚀 Starting Vercel deployment process..."
+# Make sure we have the latest dependencies
+echo "Installing dependencies..."
+npm install
 
-# Step 1: Install Vercel CLI if not already installed
-if ! command -v vercel &> /dev/null; then
-    echo "Installing Vercel CLI..."
-    npm install -g vercel
+# Update package.json for client
+echo "Updating client package.json..."
+cd client
+if ! grep -q "\"@vitejs/plugin-react\"" package.json; then
+  npm install --save-dev @vitejs/plugin-react vite
+fi
+cd ..
+
+# Create .env file if it doesn't exist
+if [ ! -f ".env" ]; then
+  echo "Creating .env file..."
+  echo "MONGO_URI=your_mongodb_atlas_connection_string" > .env
+  echo "JWT_SECRET=your_jwt_secret" >> .env
+  echo "JWT_EXPIRE=1d" >> .env
+  echo "JWT_COOKIE_EXPIRE=1" >> .env
+  echo "NODE_ENV=production" >> .env
+  echo "Please update the .env file with your actual MongoDB connection string and JWT secret."
 fi
 
-# Ask deployment method
-echo "Select deployment method:"
-echo "1) Deploy from GitHub (recommended)"
-echo "2) Deploy from local files"
-read -p "Enter choice (1 or 2): " choice
+# Prepare for deployment
+echo "Starting deployment..."
+echo "Options:"
+echo "1. Deploy from GitHub (recommended)"
+echo "2. Deploy from local files"
+read -p "Select option (1/2): " option
 
-if [ "$choice" = "1" ]; then
-    # GitHub deployment
-    echo "Setting up GitHub deployment..."
-    
-    # Check if already linked to a Vercel project
-    if [ -d ".vercel" ]; then
-        echo "Project is already linked to Vercel."
-    else
-        echo "Linking project to Vercel..."
-        vercel link
-    fi
-    
-    echo "Deploying from GitHub repository..."
-    vercel --prod
-    
-    echo "✅ Deployment process completed!"
-    echo "Your app is now being built and deployed from your GitHub repository."
-    echo "You can check the deployment status on the Vercel dashboard."
-    
+if [ "$option" == "1" ]; then
+  echo "Please use Vercel dashboard to import from GitHub:"
+  echo "1. Go to https://vercel.com/new"
+  echo "2. Import your GitHub repository"
+  echo "3. Configure with:"
+  echo "   - Build Command: npm run build:vercel"
+  echo "   - Output Directory: client/dist"
+  echo "4. Add environment variables from your .env file"
+elif [ "$option" == "2" ]; then
+  # Check if Vercel CLI is installed
+  if ! command -v vercel &> /dev/null; then
+    echo "Installing Vercel CLI..."
+    npm install -g vercel
+  fi
+  
+  echo "Deploying with Vercel CLI..."
+  vercel --prod
 else
-    # Local deployment (original method)
-    echo "WARNING: Local deployment may fail if your project exceeds 100MB."
-    echo "Building client..."
-    cd client
-    npm run build
-    cd ..
-    
-    echo "Deploying to Vercel..."
-    vercel --prod
-    
-    echo "✅ Deployment process completed!"
-fi 
+  echo "Invalid option selected"
+  exit 1
+fi
+
+echo "Deployment process completed!" 

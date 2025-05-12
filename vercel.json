@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "framework": "vite",
   "buildCommand": "npm run build:vercel",
   "outputDirectory": "client/dist",
   "installCommand": "npm install",
