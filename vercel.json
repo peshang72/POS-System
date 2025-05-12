@@ -31,6 +31,17 @@
       }
     },
     {
+      "src": "/assets/(.*)\\.js",
+      "dest": "/assets/$1.js",
+      "headers": {
+        "Content-Type": "application/javascript"
+      }
+    },
+    {
+      "src": "/assets/(.*)",
+      "dest": "/assets/$1"
+    },
+    {
       "src": "/(.*)",
       "dest": "/"
     }

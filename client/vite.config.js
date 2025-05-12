@@ -10,7 +10,7 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
-  base: "./",
+  base: "/",
   server: {
     port: 3000,
     proxy: {
@@ -45,6 +45,10 @@ export default defineConfig({
           i18n: ["i18next", "react-i18next"],
           data: ["axios", "@tanstack/react-query"],
         },
+        format: "es",
+        entryFileNames: "assets/[name]-[hash].js",
+        chunkFileNames: "assets/[name]-[hash].js",
+        assetFileNames: "assets/[name]-[hash].[ext]",
       },
     },
   },
