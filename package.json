@@ -18,6 +18,7 @@
     "build:server": "cd server && npm run build",
     "build:electron": "npm run build:client && npm run build:server && cd electron && npm run build",
     "build:win": "npm run build:client && npm run build:server && cd electron && npm run build:win",
+    "build:vercel": "cd client && npm install && npm run build && cd ../api && npm install",
     "test": "concurrently \"cd server && npm test\" \"cd client && npm test\"",
     "dev": "npm run start"
   },

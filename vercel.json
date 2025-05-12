@@ -1,17 +1,27 @@
 {
   "version": 2,
   "framework": "vite",
-  "buildCommand": "cd client && npm install && npm run build",
+  "buildCommand": "npm run build:vercel",
   "outputDirectory": "client/dist",
   "installCommand": "npm install",
-  "rewrites": [
+  "functions": {
+    "api/**/*.js": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  },
+  "routes": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
+      "src": "/api/auth/login",
+      "dest": "/api/auth/login.js"
     },
     {
-      "source": "/(.*)",
-      "destination": "/"
+      "src": "/api/(.*)",
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/"
     }
   ]
 }
