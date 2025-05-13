@@ -17,6 +17,11 @@ npm install
 echo "=== Installing Vite ${VITE_VERSION} and plugin-react ${PLUGIN_REACT_VERSION} ==="
 npm install vite@${VITE_VERSION} @vitejs/plugin-react@${PLUGIN_REACT_VERSION} --save-dev
 
+# Check if vite is installed correctly
+echo "=== Checking Vite installation ==="
+ls -la node_modules/.bin/vite || echo "Vite not found in node_modules/.bin"
+ls -la node_modules/vite || echo "Vite directory not found in node_modules"
+
 # Create a minimal vite config
 echo "=== Creating minimal Vite config ==="
 cat > vite.config.js << 'EOL'
@@ -30,9 +35,9 @@ export default defineConfig({
 });
 EOL
 
-# Build the client - use npx to directly call vite
+# Build the client - use node_modules directly
 echo "=== Building client application ==="
-npx vite build
+./node_modules/.bin/vite build || node ./node_modules/vite/bin/vite.js build
 cd ..
 
 # Install API dependencies
