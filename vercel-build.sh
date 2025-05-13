@@ -30,9 +30,9 @@ export default defineConfig({
 });
 EOL
 
-# Build the client
+# Build the client - use npx to directly call vite
 echo "=== Building client application ==="
-npm run build
+npx vite build
 cd ..
 
 # Install API dependencies
