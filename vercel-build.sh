@@ -5,16 +5,17 @@ echo "=== Vercel Build Script ==="
 echo "Node version: $(node -v)"
 echo "NPM version: $(npm -v)"
 
-# Set up variables
-VITE_VERSION="5.0.0"
-PLUGIN_REACT_VERSION="4.0.0"
+# Set up variables - update to latest compatible versions
+VITE_VERSION="5.1.4"
+PLUGIN_REACT_VERSION="4.2.1"
 
 echo "=== Installing client dependencies ==="
 cd client
 npm install
-# Make sure we have a fixed Vite version
-echo "=== Installing Vite ${VITE_VERSION} ==="
-npm install vite@${VITE_VERSION} @vitejs/plugin-react@${PLUGIN_REACT_VERSION} --save-dev --force
+
+# Make sure we have compatible Vite and plugin-react versions
+echo "=== Installing Vite ${VITE_VERSION} and plugin-react ${PLUGIN_REACT_VERSION} ==="
+npm install vite@${VITE_VERSION} @vitejs/plugin-react@${PLUGIN_REACT_VERSION} --save-dev
 
 # Create a minimal vite config
 echo "=== Creating minimal Vite config ==="
@@ -31,7 +32,7 @@ EOL
 
 # Build the client
 echo "=== Building client application ==="
-npm exec -- vite build
+npm run build
 cd ..
 
 # Install API dependencies
