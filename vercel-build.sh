@@ -11,16 +11,27 @@ PLUGIN_REACT_VERSION="4.2.1"
 
 echo "=== Installing client dependencies ==="
 cd client
-npm install
 
-# Make sure we have compatible Vite and plugin-react versions
-echo "=== Installing Vite ${VITE_VERSION} and plugin-react ${PLUGIN_REACT_VERSION} ==="
+# Debug: Check if package.json exists and what's in it
+echo "=== Debug: Current directory and package.json ==="
+pwd
+ls -la
+cat package.json
+
+# Clean installation to ensure correct dependencies
+echo "=== Clean npm cache and node_modules ==="
+rm -rf node_modules
+npm cache clean --force
+
+echo "=== Installing dependencies with explicit paths ==="
+npm install
 npm install vite@${VITE_VERSION} @vitejs/plugin-react@${PLUGIN_REACT_VERSION} --save-dev
 
-# Check if vite is installed correctly
-echo "=== Checking Vite installation ==="
-ls -la node_modules/.bin/vite || echo "Vite not found in node_modules/.bin"
-ls -la node_modules/vite || echo "Vite directory not found in node_modules"
+# Debug: Verify installation
+echo "=== Verify installation ==="
+ls -la node_modules
+find node_modules -name "vite" -type d
+npm list vite
 
 # Create a minimal vite config
 echo "=== Creating minimal Vite config ==="
@@ -35,9 +46,20 @@ export default defineConfig({
 });
 EOL
 
-# Build the client - use node_modules directly
+# Build the client - try alternative approaches
 echo "=== Building client application ==="
-./node_modules/.bin/vite build || node ./node_modules/vite/bin/vite.js build
+if [ -f "node_modules/.bin/vite" ]; then
+  echo "Using node_modules/.bin/vite"
+  ./node_modules/.bin/vite build
+elif [ -f "node_modules/vite/bin/vite.js" ]; then
+  echo "Using node_modules/vite/bin/vite.js"
+  node ./node_modules/vite/bin/vite.js build
+else
+  echo "Using global npx as fallback"
+  npm install -g vite@${VITE_VERSION}
+  npx --no-install vite build
+fi
+
 cd ..
 
 # Install API dependencies
