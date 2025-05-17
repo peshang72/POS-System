@@ -80,7 +80,7 @@ export default defineConfig({
             "chart.js",
             "react-chartjs-2",
           ],
-          i18n: ["i18next", "react-i18next", "i18next-http-backend"],
+          i18n: ["i18next", "react-i18next"],
           data: ["axios", "@tanstack/react-query"],
         },
         format: "es",
