@@ -70,7 +70,7 @@ export default defineConfig({
       },
     },
     rollupOptions: {
-      external: ["clsx", "tailwind-merge"],
+      external: ["clsx", "tailwind-merge", "i18next-http-backend"],
       output: {
         manualChunks: {
           vendor: ["react", "react-dom", "react-router-dom"],
