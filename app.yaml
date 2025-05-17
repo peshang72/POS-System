@@ -11,6 +11,7 @@ services:
     http_port: 5000
     routes:
       - path: /api
+      - path: /api/(.*)
     envs:
       - key: NODE_ENV
         value: production
