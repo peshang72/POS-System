@@ -57,6 +57,9 @@ export default defineConfig({
       },
     },
   },
+  preview: {
+    allowedHosts: ["listik-pos-vjcxe.ondigitalocean.app"],
+  },
   build: {
     outDir: "dist",
     assetsDir: "assets",
