@@ -1,6 +1,6 @@
 {
   "name": "pos-system-desktop",
-  "version": "1.0.3",
+  "version": "1.0.17",
   "description": "Gaming Store POS System Desktop Application",
   "main": "src/main.js",
   "repository": {
@@ -8,18 +8,31 @@
     "url": "https://github.com/peshang72/POS-System.git"
   },
   "scripts": {
-    "start": "electron .",
-    "dev": "electron . --dev",
-    "build": "electron-builder",
-    "build:win": "electron-builder --win --config electron-builder.yml",
-    "build:linux": "electron-builder --linux --config electron-builder.yml",
-    "build:all": "electron-builder -wl --config electron-builder.yml",
-    "publish": "electron-builder --publish always",
-    "publish:win": "electron-builder --win --publish always",
-    "publish:linux": "electron-builder --linux --publish always",
+    "start": "LIBVA_DRIVER_NAME=dummy ELECTRON_DISABLE_GPU=1 ELECTRON_DISABLE_SANDBOX=1 electron .",
+    "dev": "LIBVA_DRIVER_NAME=dummy ELECTRON_DISABLE_GPU=1 ELECTRON_DISABLE_SANDBOX=1 electron . --dev",
+    "build": "NODE_OPTIONS=--no-deprecation npx electron-builder",
+    "build:win": "NODE_OPTIONS=--no-deprecation npx electron-builder --win --config electron-builder.yml",
+    "download-node-once": "node scripts/download-once.js && npm run verify-node-windows",
+    "build:windows": "npm run download-node-once && npm run prepare-server-modules && npm run fix-server-express && NODE_OPTIONS=--no-deprecation npx electron-builder --win --config windows-builder.yml && npm run copy-server-modules && npm run verify-server-modules && npm run check-build",
+    "prepare-server-modules": "node scripts/prepare-server-modules.js",
+    "copy-server-modules": "node scripts/copy-server-modules.js",
+    "verify-server-modules": "node scripts/verify-server-modules.js",
+    "check-build": "node scripts/check-build-structure.js",
+    "build:linux": "NODE_OPTIONS=--no-deprecation npx electron-builder --linux --config electron-builder.yml",
+    "build:appimage": "NODE_OPTIONS=--no-deprecation npx electron-builder --linux AppImage -c.linux.target=AppImage --config electron-builder.yml",
+    "build:all": "NODE_OPTIONS=--no-deprecation npx electron-builder -wl --config electron-builder.yml",
+    "publish": "NODE_OPTIONS=--no-deprecation npx electron-builder --publish always",
+    "publish:win": "npm run download-node-once && npm run prepare-server-modules && npm run fix-server-express && NODE_OPTIONS=--no-deprecation npx electron-builder --win --config windows-builder.yml --publish always && npm run copy-server-modules && npm run verify-server-modules && npm run check-build",
+    "publish:linux": "NODE_OPTIONS=--no-deprecation npx electron-builder --linux --publish always",
+    "publish:dry-run": "NODE_OPTIONS=--no-deprecation npx electron-builder --publish never",
+    "publish:win:dry-run": "npm run download-node-once && npm run prepare-server-modules && npm run fix-server-express && NODE_OPTIONS=--no-deprecation npx electron-builder --win --config windows-builder.yml --publish never && npm run copy-server-modules && npm run verify-server-modules && npm run check-build",
     "fix-deps": "node fix-deps.js",
+    "fix-server-express": "node fix-server-express.js",
     "setup": "node setup.js",
-    "manual-setup": "node manual-install.js"
+    "manual-setup": "node manual-install.js",
+    "download-node-windows": "node scripts/download-node-windows.js",
+    "verify-node-windows": "node scripts/verify-node-windows.js",
+    "build-windows-with-node": "npm run download-node-once && npm run prepare-server-modules && npm run fix-server-express && npm run build:windows && npm run copy-server-modules"
   },
   "keywords": [
     "pos",
@@ -27,21 +40,39 @@
     "electron",
     "desktop"
   ],
-  "author": "",
+  "author": "POS System Team <pos-system-team@example.com>",
   "license": "ISC",
   "devDependencies": {
-    "electron": "^29.0.1",
-    "electron-builder": "^24.9.1"
+    "electron": "29.0.1",
+    "electron-builder": "26.0.12"
   },
   "build": {
     "appId": "com.gaming.pos",
     "productName": "Gaming POS System",
     "win": {
-      "target": "dir",
+      "target": "nsis",
       "signAndEditExecutable": false
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "peshang72",
+      "repo": "POS-System"
     }
   },
   "dependencies": {
+    "electron-log": "5.4.0",
     "electron-updater": "6.6.2"
+  },
+  "overrides": {
+    "glob": "^10.3.10",
+    "inflight": "^1.0.6",
+    "rimraf": "^5.0.5",
+    "@npmcli/fs": "^3.1.0"
+  },
+  "resolutions": {
+    "glob": "^10.3.10",
+    "inflight": "^1.0.6",
+    "rimraf": "^5.0.5",
+    "@npmcli/fs": "^3.1.0"
   }
 }

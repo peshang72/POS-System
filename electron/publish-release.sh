@@ -3,21 +3,18 @@
 # Exit on error
 set -e
 
-# First, check if the GitHub token is provided
-if [ -z "$1" ]; then
+# Check if the GitHub token is provided as an environment variable
+if [ -z "$GH_TOKEN" ]; then
   echo "Error: GitHub token not provided!"
-  echo "Usage: ./publish-release.sh YOUR_GITHUB_TOKEN"
+  echo "Usage: GH_TOKEN=your_github_token ./publish-release.sh"
   exit 1
 fi
 
-# Set the GitHub token
-GITHUB_TOKEN=$1
-
 # Navigate to electron directory
-cd /home/peshang/pos-system/electron
+cd "$(dirname "$0")"
 
 # Publish to GitHub
 echo "Publishing release to GitHub..."
-GH_TOKEN=$GITHUB_TOKEN npm run publish:linux
+npx electron-builder --linux --publish always
 
 echo "Release published successfully!" 

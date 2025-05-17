@@ -1,0 +1,419 @@
+  • electron-builder  version=26.0.12 os=6.8.0-59-generic
+  • loaded configuration  file=package.json ("build" field)
+  • effective config  config=directories:
+  output: dist
+  buildResources: build
+appId: com.gaming.pos
+productName: Gaming POS System
+win:
+  target: dir
+  signAndEditExecutable: false
+files: []
+
+  • no event listeners found  event=beforePack
+  • spawning        command=/home/peshang/.npm/_npx/009083ec26dc578f/node_modules/app-builder-bin/linux/x64/app-builder node-dep-tree --dir /home/peshang/pos-system/electron
+  • unresolved deps  unresolved=builder-util-runtimejs-yamllazy-vallodash.escaperegexplodash.isequaltiny-typed-emitter nodeModuleDir=/home/peshang/pos-system/electron/node_modules round=0
+  • unresolved deps  unresolved=graceful-fs nodeModuleDir=/home/peshang/pos-system/electron/node_modules round=0
+  • unresolved deps  unresolved=graceful-fs nodeModuleDir=/home/peshang/pos-system/electron/node_modules round=0
+  • exited          command=app-builder code=0 pid=10099 out=[{"dir":"/home/peshang/pos-system/electron/node_modules","deps":[{"name":"argparse","version":"2.0.1"},{"name":"builder-util-runtime","version":"9.3.1"},{"name":"debug","version":"4.4.0"},{"name":"electron-updater","version":"6.6.2"},{"name":"graceful-fs","version":"4.2.11"},{"name":"js-yaml","version":"4.1.0"},{"name":"lazy-val","version":"1.0.5"},{"name":"lodash.escaperegexp","version":"4.1.2"},{"name":"lodash.isequal","version":"4.5.0"},{"name":"ms","version":"2.1.3"},{"name":"sax","version":"1.4.1"},{"name":"tiny-typed-emitter","version":"2.1.0"}]},{"dir":"/home/peshang/pos-system/electron/node_modules/electron-updater/node_modules","deps":[{"name":"fs-extra","version":"10.1.0"},{"name":"jsonfile","version":"6.1.0"},{"name":"semver","version":"7.7.1"},{"name":"universalify","version":"2.0.1"}]}]
+  • executing @electron/rebuild  electronVersion=29.0.1 arch=x64 buildFromSource=false appDir=./
+  • installing native dependencies  arch=x64
+  • completed installing native dependencies
+  • packaging       platform=win32 arch=x64 electron=29.0.1 appOutDir=dist/win-unpacked
+  • spawning        command=/home/peshang/.npm/_npx/009083ec26dc578f/node_modules/app-builder-bin/linux/x64/app-builder unpack-electron --configuration [{"platform":"win32","arch":"x64","version":"29.0.1"}] --output /home/peshang/pos-system/electron/dist/win-unpacked --distMacOsAppName Electron.app
+  • map async       taskCount=2
+  • map async       taskCount=1
+  • map async       taskCount=73
+  • exited          command=app-builder code=0 pid=10114
+  • no event listeners found  event=afterExtract
+  • executing       file=npm args=list -a --include prod --include optional --omit dev --json --long --silent cwd=/home/peshang/pos-system/electron
+  • executed        file=npm stdout={
+  "version": "1.0.4",
+  "name": "pos-system-desktop",
+  "description": "Gaming Store POS System Desktop Application",
+  "main": "src/main.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/peshang72/POS-System.git"
+  },
+  "scripts": {
+    "start": "LIBVA_DRIVER_NAME=dummy ELECTRON_DISABLE_GPU=1 ELECTRON_DISABLE_SANDBOX=1 electron .",
+    "dev": "LIBVA_DRIVER_NAME=dummy ELECTRON_DISABLE_GPU=1 ELECTRON_DISABLE_SANDBOX=1 electron . --dev",
+    "build": "NODE_OPTIONS=--no-deprecation electron-builder",
+    "build:win": "NODE_OPTIONS=--no-deprecation electron-builder --win --config electron-builder.yml",
+    "build:linux": "NODE_OPTIONS=--no-deprecation electron-builder --linux --config electron-builder.yml",
+    "build:appimage": "NODE_OPTIONS=--no-deprecation electron-builder --linux AppImage -c.linux.target=AppImage --config electron-builder.yml",
+    "build:all": "NODE_OPTIONS=--no-deprecation electron-builder -wl --config electron-builder.yml",
+    "publish": "NODE_OPTIONS=--no-deprecation electron-builder --publish always",
+    "publish:win": "NODE_OPTIONS=--no-deprecation electron-builder --win --publish always",
+    "publish:linux": "NODE_OPTIONS=--no-deprecation electron-builder --linux --publish always",
+    "publish:dry-run": "NODE_OPTIONS=--no-deprecation electron-builder --publish never",
+    "publish:win:dry-run": "NODE_OPTIONS=--no-deprecation electron-builder --win --publish never",
+    "fix-deps": "node fix-deps.js",
+    "setup": "node setup.js",
+    "manual-setup": "node manual-install.js"
+  },
+  "keywords": [
+    "pos",
+    "gaming-store",
+    "electron",
+    "desktop"
+  ],
+  "author": "POS System Team <pos-system-team@example.com>",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "29.0.1",
+    "electron-builder": "26.0.12"
+  },
+  "build": {
+    "appId": "com.gaming.pos",
+    "productName": "Gaming POS System",
+    "win": {
+      "target": "dir",
+      "signAndEditExecutable": false
+    }
+  },
+  "overrides": {
+    "glob": "^10.3.10",
+    "inflight": "^1.0.6",
+    "rimraf": "^5.0.5",
+    "@npmcli/fs": "^3.1.0"
+  },
+  "resolutions": {
+    "glob": "^10.3.10",
+    "inflight": "^1.0.6",
+    "rimraf": "^5.0.5",
+    "@npmcli/fs": "^3.1.0"
+  },
+  "_id": "pos-system-desktop@1.0.4",
+  "extraneous": false,
+  "path": "/home/peshang/pos-system/electron",
+  "_dependencies": {
+    "electron-updater": "6.6.2"
+  },
+  "peerDependencies": {},
+  "dependencies": {
+    "electron-updater": {
+      "version": "6.6.2",
+      "resolved": "https://registry.npmjs.org/electron-updater/-/electron-updater-6.6.2.tgz",
+      "overridden": false,
+      "name": "electron-updater",
+      "integrity": "sha512-Cr4GDOkbAUqRHP5/oeOmH/L2Bn6+FQPxVLZtPbcmKZC63a1F3uu5EefYOssgZXG3u/zBlubbJ5PJdITdMVggbw==",
+      "license": "MIT",
+      "_id": "electron-updater@6.6.2",
+      "extraneous": false,
+      "path": "/home/peshang/pos-system/electron/node_modules/electron-updater",
+      "_dependencies": {
+        "builder-util-runtime": "9.3.1",
+        "fs-extra": "^10.1.0",
+        "js-yaml": "^4.1.0",
+        "lazy-val": "^1.0.5",
+        "lodash.escaperegexp": "^4.1.2",
+        "lodash.isequal": "^4.5.0",
+        "semver": "^7.6.3",
+        "tiny-typed-emitter": "^2.1.0"
+      },
+      "devDependencies": {},
+      "peerDependencies": {},
+      "dependencies": {
+        "builder-util-runtime": {
+          "version": "9.3.1",
+          "resolved": "https://registry.npmjs.org/builder-util-runtime/-/builder-util-runtime-9.3.1.tgz",
+          "overridden": false,
+          "name": "builder-util-runtime",
+          "integrity": "sha512-2/egrNDDnRaxVwK3A+cJq6UOlqOdedGA7JPqCeJjN2Zjk1/QB/6QUi3b714ScIGS7HafFXTyzJEOr5b44I3kvQ==",
+          "license": "MIT",
+          "engines": {
+            "node": ">=12.0.0"
+          },
+          "_id": "builder-util-runtime@9.3.1",
+          "extraneous": false,
+          "path": "/home/peshang/pos-system/electron/node_modules/builder-util-runtime",
+          "_dependencies": {
+            "debug": "^4.3.4",
+            "sax": "^1.2.4"
+          },
+          "devDependencies": {},
+          "peerDependencies": {},
+          "dependencies": {
+            "debug": {
+              "version": "4.4.0",
+              "resolved": "https://registry.npmjs.org/debug/-/debug-4.4.0.tgz",
+              "overridden": false,
+              "name": "debug",
+              "integrity": "sha512-6WTZ/IxCY/T6BALoZHaE4ctp9xm+Z5kY/pzYaCHRFeyVhojxlrm+46y68HA6hr0TcwEssoxNiDEUJQjfPZ/RYA==",
+              "license": "MIT",
+              "engines": {
+                "node": ">=6.0"
+              },
+              "peerDependenciesMeta": {
+                "supports-color": {
+                  "optional": true
+                }
+              },
+              "_id": "debug@4.4.0",
+              "extraneous": false,
+              "path": "/home/peshang/pos-system/electron/node_modules/debug",
+              "_dependencies": {
+                "ms": "^2.1.3"
+              },
+              "devDependencies": {},
+              "peerDependencies": {},
+              "dependencies": {
+                "ms": {
+                  "version": "2.1.3",
+                  "resolved": "https://registry.npmjs.org/ms/-/ms-2.1.3.tgz",
+                  "overridden": false,
+                  "name": "ms",
+                  "integrity": "sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==",
+                  "license": "MIT",
+                  "_id": "ms@2.1.3",
+                  "extraneous": false,
+                  "path": "/home/peshang/pos-system/electron/node_modules/ms",
+                  "_dependencies": {},
+                  "devDependencies": {},
+                  "peerDependencies": {}
+                }
+              }
+            },
+            "sax": {
+              "version": "1.4.1",
+              "resolved": "https://registry.npmjs.org/sax/-/sax-1.4.1.tgz",
+              "overridden": false,
+              "name": "sax",
+              "integrity": "sha512-+aWOz7yVScEGoKNd4PA10LZ8sk0A/z5+nXQG5giUO5rprX9jgYsTdov9qCchZiPIZezbZH+jRut8nPodFAX4Jg==",
+              "license": "ISC",
+              "_id": "sax@1.4.1",
+              "extraneous": false,
+              "path": "/home/peshang/pos-system/electron/node_modules/sax",
+              "_dependencies": {},
+              "devDependencies": {},
+              "peerDependencies": {}
+            }
+          }
+        },
+        "fs-extra": {
+          "version": "10.1.0",
+          "resolved": "https://registry.npmjs.org/fs-extra/-/fs-extra-10.1.0.tgz",
+          "overridden": false,
+          "name": "fs-extra",
+          "integrity": "sha512-oRXApq54ETRj4eMiFzGnHWGy+zo5raudjuxN0b8H7s/RU2oW0Wvsx9O0ACRN/kRq9E8Vu/ReskGB5o3ji+FzHQ==",
+          "license": "MIT",
+          "engines": {
+            "node": ">=12"
+          },
+          "_id": "fs-extra@10.1.0",
+          "extraneous": false,
+          "path": "/home/peshang/pos-system/electron/node_modules/electron-updater/node_modules/fs-extra",
+          "_dependencies": {
+            "graceful-fs": "^4.2.0",
+            "jsonfile": "^6.0.1",
+            "universalify": "^2.0.0"
+          },
+          "devDependencies": {},
+          "peerDependencies": {},
+          "dependencies": {
+            "graceful-fs": {
+              "version": "4.2.11",
+              "resolved": "https://registry.npmjs.org/graceful-fs/-/graceful-fs-4.2.11.tgz",
+              "overridden": false,
+              "name": "graceful-fs",
+              "integrity": "sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==",
+              "license": "ISC",
+              "_id": "graceful-fs@4.2.11",
+              "extraneous": false,
+              "path": "/home/peshang/pos-system/electron/node_modules/graceful-fs",
+              "_dependencies": {},
+              "devDependencies": {},
+              "peerDependencies": {}
+            },
+            "jsonfile": {
+              "version": "6.1.0",
+              "resolved": "https://registry.npmjs.org/jsonfile/-/jsonfile-6.1.0.tgz",
+              "overridden": false,
+              "name": "jsonfile",
+              "integrity": "sha512-5dgndWOriYSm5cnYaJNhalLNDKOqFwyDB/rr1E9ZsGciGvKPs8R2xYGCacuf3z6K1YKDz182fd+fY3cn3pMqXQ==",
+              "license": "MIT",
+              "optionalDependencies": {
+                "graceful-fs": "^4.1.6"
+              },
+              "_id": "jsonfile@6.1.0",
+              "extraneous": false,
+              "path": "/home/peshang/pos-system/electron/node_modules/electron-updater/node_modules/jsonfile",
+              "_dependencies": {
+                "universalify": "^2.0.0",
+                "graceful-fs": "^4.1.6"
+              },
+              "devDependencies": {},
+              "peerDependencies": {},
+              "dependencies": {
+                "graceful-fs": {
+                  "version": "4.2.11",
+                  "name": "graceful-fs",
+                  "resolved": "https://registry.npmjs.org/graceful-fs/-/graceful-fs-4.2.11.tgz",
+                  "integrity": "sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==",
+                  "license": "ISC",
+                  "_id": "graceful-fs@4.2.11",
+                  "extraneous": false,
+                  "path": "/home/peshang/pos-system/electron/node_modules/graceful-fs",
+                  "_dependencies": {},
+                  "devDependencies": {},
+                  "peerDependencies": {}
+                },
+                "universalify": {
+                  "version": "2.0.1",
+                  "name": "universalify",
+                  "resolved": "https://registry.npmjs.org/universalify/-/universalify-2.0.1.tgz",
+                  "integrity": "sha512-gptHNQghINnc/vTGIk0SOFGFNXw7JVrlRUtConJRlvaw6DuX0wO5Jeko9sWrMBhh+PsYAZ7oXAiOnf/UKogyiw==",
+                  "license": "MIT",
+                  "engines": {
+                    "node": ">= 10.0.0"
+                  },
+                  "_id": "universalify@2.0.1",
+                  "extraneous": false,
+                  "path": "/home/peshang/pos-system/electron/node_modules/electron-updater/node_modules/universalify",
+                  "_dependencies": {},
+                  "devDependencies": {},
+                  "peerDependencies": {}
+                }
+              }
+            },
+            "universalify": {
+              "version": "2.0.1",
+              "resolved": "https://registry.npmjs.org/universalify/-/universalify-2.0.1.tgz",
+              "overridden": false,
+              "name": "universalify",
+              "integrity": "sha512-gptHNQghINnc/vTGIk0SOFGFNXw7JVrlRUtConJRlvaw6DuX0wO5Jeko9sWrMBhh+PsYAZ7oXAiOnf/UKogyiw==",
+              "license": "MIT",
+              "engines": {
+                "node": ">= 10.0.0"
+              },
+              "_id": "universalify@2.0.1",
+              "extraneous": false,
+              "path": "/home/peshang/pos-system/electron/node_modules/electron-updater/node_modules/universalify",
+              "_dependencies": {},
+              "devDependencies": {},
+              "peerDependencies": {}
+            }
+          }
+        },
+        "js-yaml": {
+          "version": "4.1.0",
+          "resolved": "https://registry.npmjs.org/js-yaml/-/js-yaml-4.1.0.tgz",
+          "overridden": false,
+          "name": "js-yaml",
+          "integrity": "sha512-wpxZs9NoxZaJESJGIZTyDEaYpl0FKSA+FB9aJiyemKhMwkxQg63h4T1KJgUGHpTqPDNRcmmYLugrRjJlBtWvRA==",
+          "license": "MIT",
+          "bin": {
+            "js-yaml": "bin/js-yaml.js"
+          },
+          "_id": "js-yaml@4.1.0",
+          "extraneous": false,
+          "path": "/home/peshang/pos-system/electron/node_modules/js-yaml",
+          "_dependencies": {
+            "argparse": "^2.0.1"
+          },
+          "devDependencies": {},
+          "peerDependencies": {},
+          "dependencies": {
+            "argparse": {
+              "version": "2.0.1",
+              "resolved": "https://registry.npmjs.org/argparse/-/argparse-2.0.1.tgz",
+              "overridden": false,
+              "name": "argparse",
+              "integrity": "sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q==",
+              "license": "Python-2.0",
+              "_id": "argparse@2.0.1",
+              "extraneous": false,
+              "path": "/home/peshang/pos-system/electron/node_modules/argparse",
+              "_dependencies": {},
+              "devDependencies": {},
+              "peerDependencies": {}
+            }
+          }
+        },
+        "lazy-val": {
+          "version": "1.0.5",
+          "resolved": "https://registry.npmjs.org/lazy-val/-/lazy-val-1.0.5.tgz",
+          "overridden": false,
+          "name": "lazy-val",
+          "integrity": "sha512-0/BnGCCfyUMkBpeDgWihanIAF9JmZhHBgUhEqzvf+adhNGLoP6TaiI5oF8oyb3I45P+PcnrqihSf01M0l0G5+Q==",
+          "license": "MIT",
+          "_id": "lazy-val@1.0.5",
+          "extraneous": false,
+          "path": "/home/peshang/pos-system/electron/node_modules/lazy-val",
+          "_dependencies": {},
+          "devDependencies": {},
+          "peerDependencies": {}
+        },
+        "lodash.escaperegexp": {
+          "version": "4.1.2",
+          "resolved": "https://registry.npmjs.org/lodash.escaperegexp/-/lodash.escaperegexp-4.1.2.tgz",
+          "overridden": false,
+          "name": "lodash.escaperegexp",
+          "integrity": "sha512-TM9YBvyC84ZxE3rgfefxUWiQKLilstD6k7PTGt6wfbtXF8ixIJLOL3VYyV/z+ZiPLsVxAsKAFVwWlWeb2Y8Yyw==",
+          "license": "MIT",
+          "_id": "lodash.escaperegexp@4.1.2",
+          "extraneous": false,
+          "path": "/home/peshang/pos-system/electron/node_modules/lodash.escaperegexp",
+          "_dependencies": {},
+          "devDependencies": {},
+          "peerDependencies": {}
+        },
+        "lodash.isequal": {
+          "version": "4.5.0",
+          "resolved": "https://registry.npmjs.org/lodash.isequal/-/lodash.isequal-4.5.0.tgz",
+          "overridden": false,
+          "name": "lodash.isequal",
+          "integrity": "sha512-pDo3lu8Jhfjqls6GkMgpahsF9kCyayhgykjyLMNFTKWrpVdAQtYyB4muAMWozBB4ig/dtWAmsMxLEI8wuz+DYQ==",
+          "deprecated": "This package is deprecated. Use require('node:util').isDeepStrictEqual instead.",
+          "license": "MIT",
+          "_id": "lodash.isequal@4.5.0",
+          "extraneous": false,
+          "path": "/home/peshang/pos-system/electron/node_modules/lodash.isequal",
+          "_dependencies": {},
+          "devDependencies": {},
+          "peerDependencies": {}
+        },
+        "semver": {
+          "version": "7.7.1",
+          "resolved": "https://registry.npmjs.org/semver/-/semver-7.7.1.tgz",
+          "overridden": false,
+          "name": "semver",
+          "integrity": "sha512-hlq8tAfn0m/61p4BVRcPzIGr6LKiMwo4VM6dGi6pt4qcRkmNzTcWq6eCEjEh+qXjkMDvPlOFFSGwQjoEa6gyMA==",
+          "license": "ISC",
+          "bin": {
+            "semver": "bin/semver.js"
+          },
+          "engines": {
+            "node": ">=10"
+          },
+          "_id": "semver@7.7.1",
+          "extraneous": false,
+          "path": "/home/peshang/pos-system/electron/node_modules/electron-updater/node_modules/semver",
+          "_dependencies": {},
+          "devDependencies": {},
+          "peerDependencies": {}
+        },
+        "tiny-typed-emitter": {
+          "version": "2.1.0",
+          "resolved": "https://registry.npmjs.org/tiny-typed-emitter/-/tiny-typed-emitter-2.1.0.tgz",
+          "overridden": false,
+          "name": "tiny-typed-emitter",
+          "integrity": "sha512-qVtvMxeXbVej0cQWKqVSSAHmKZEHAvxdF8HEUBFWts8h+xEo5m/lEiPakuyZ3BnCBjOD8i24kzNOiOLLgsSxhA==",
+          "license": "MIT",
+          "_id": "tiny-typed-emitter@2.1.0",
+          "extraneous": false,
+          "path": "/home/peshang/pos-system/electron/node_modules/tiny-typed-emitter",
+          "_dependencies": {},
+          "devDependencies": {},
+          "peerDependencies": {}
+        }
+      }
+    }
+  }
+}
+
+  • collected node modules  nodeModules=[{"name":"argparse","version":"2.0.1","dir":"/home/peshang/pos-system/electron/node_modules/argparse"},{"name":"builder-util-runtime","version":"9.3.1","dir":"/home/peshang/pos-system/electron/node_modules/builder-util-runtime"},{"name":"debug","version":"4.4.0","dir":"/home/peshang/pos-system/electron/node_modules/debug"},{"name":"electron-updater","version":"6.6.2","dir":"/home/peshang/pos-system/electron/node_modules/electron-updater"},{"name":"fs-extra","version":"10.1.0","dir":"/home/peshang/pos-system/electron/node_modules/electron-updater/node_modules/fs-extra"},{"name":"graceful-fs","version":"4.2.11","dir":"/home/peshang/pos-system/electron/node_modules/graceful-fs"},{"name":"js-yaml","version":"4.1.0","dir":"/home/peshang/pos-system/electron/node_modules/js-yaml"},{"name":"jsonfile","version":"6.1.0","dir":"/home/peshang/pos-system/electron/node_modules/electron-updater/node_modules/jsonfile"},{"name":"lazy-val","version":"1.0.5","dir":"/home/peshang/pos-system/electron/node_modules/lazy-val"},{"name":"lodash.escaperegexp","version":"4.1.2","dir":"/home/peshang/pos-system/electron/node_modules/lodash.escaperegexp"},{"name":"lodash.isequal","version":"4.5.0","dir":"/home/peshang/pos-system/electron/node_modules/lodash.isequal"},{"name":"ms","version":"2.1.3","dir":"/home/peshang/pos-system/electron/node_modules/ms"},{"name":"sax","version":"1.4.1","dir":"/home/peshang/pos-system/electron/node_modules/sax"},{"name":"semver","version":"7.7.1","dir":"/home/peshang/pos-system/electron/node_modules/electron-updater/node_modules/semver"},{"name":"tiny-typed-emitter","version":"2.1.0","dir":"/home/peshang/pos-system/electron/node_modules/tiny-typed-emitter"},{"name":"universalify","version":"2.0.1","dir":"/home/peshang/pos-system/electron/node_modules/electron-updater/node_modules/universalify"}]
+  • permissions fixed from  file=/tmp/t-ndSEua/asar-app-0/.env oldMode=-rw------- mode=-rw-r--r--
+  • updating asar integrity executable resource  executablePath=dist/win-unpacked/Gaming POS System.exe

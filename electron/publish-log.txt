@@ -1,0 +1,9 @@
+Publishing Windows release to GitHub...
+  • electron-builder  version=26.0.12 os=6.8.0-59-generic
+  • loaded configuration  file=package.json ("build" field)
+  • executing @electron/rebuild  electronVersion=29.0.1 arch=x64 buildFromSource=false appDir=./
+  • installing native dependencies  arch=x64
+  • completed installing native dependencies
+  • packaging       platform=win32 arch=x64 electron=29.0.1 appOutDir=dist/win-unpacked
+  • updating asar integrity executable resource  executablePath=dist/win-unpacked/Gaming POS System.exe
+Windows release published successfully!

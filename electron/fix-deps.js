@@ -15,6 +15,8 @@ console.log("🔍 Checking for deprecated dependencies...");
 const packagesToUpgrade = {
   glob: "^10.3.10",
   inflight: "^1.0.6",
+  rimraf: "^5.0.5",
+  "@npmcli/fs": "^3.1.0",
   // Removed boolean to avoid conflicts
 };
 
@@ -32,7 +34,9 @@ legacy-peer-deps=true
 save-exact=true
 # Resolve package versions
 public-hoist-pattern[]=glob
-public-hoist-pattern[]=inflight`;
+public-hoist-pattern[]=inflight
+public-hoist-pattern[]=rimraf
+public-hoist-pattern[]=@npmcli/fs`;
 
   fs.writeFileSync(npmrcPath, npmrcContent);
   console.log("✅ Created .npmrc file");
@@ -57,11 +61,14 @@ if (fs.existsSync(packageJsonPath)) {
         }
       });
 
-      // Also remove boolean if it exists
-      if (packageJson.dependencies.boolean) {
-        console.log(`🗑️ Removing direct dependency on boolean...`);
-        delete packageJson.dependencies.boolean;
-      }
+      // Also remove deprecated packages
+      const deprecatedPackages = ["boolean", "@npmcli/move-file"];
+      deprecatedPackages.forEach((pkg) => {
+        if (packageJson.dependencies[pkg]) {
+          console.log(`🗑️ Removing deprecated dependency on ${pkg}...`);
+          delete packageJson.dependencies[pkg];
+        }
+      });
 
       // If dependencies is empty, remove it
       if (Object.keys(packageJson.dependencies).length === 0) {
@@ -79,6 +86,16 @@ if (fs.existsSync(packageJsonPath)) {
     // Add resolutions if they don't exist
     if (!packageJson.resolutions) {
       packageJson.resolutions = {};
+      updated = true;
+    }
+
+    // Remove @npmcli/move-file from overrides and resolutions if present
+    if (packageJson.overrides["@npmcli/move-file"]) {
+      delete packageJson.overrides["@npmcli/move-file"];
+      updated = true;
+    }
+    if (packageJson.resolutions["@npmcli/move-file"]) {
+      delete packageJson.resolutions["@npmcli/move-file"];
       updated = true;
     }
 
@@ -120,7 +137,11 @@ const nodeModulesDir = path.join(electronDir, "node_modules");
 if (fs.existsSync(nodeModulesDir)) {
   // Remove problem packages directly
   console.log("🧹 Removing problematic packages directly...");
-  Object.keys(packagesToUpgrade).forEach((pkg) => {
+  const packagesToRemove = [
+    ...Object.keys(packagesToUpgrade),
+    "@npmcli/move-file",
+  ];
+  packagesToRemove.forEach((pkg) => {
     const pkgDir = path.join(nodeModulesDir, pkg);
     if (fs.existsSync(pkgDir)) {
       try {
@@ -131,6 +152,46 @@ if (fs.existsSync(nodeModulesDir)) {
       }
     }
   });
+
+  // Also remove nested instances of deprecated packages from node_modules
+  try {
+    console.log("🔍 Searching for nested deprecated packages...");
+    // Find all instances of the deprecated packages
+    const allPackagesToCheck = [
+      ...Object.keys(packagesToUpgrade),
+      "@npmcli/move-file",
+    ];
+    for (const pkg of allPackagesToCheck) {
+      let pkgName = pkg;
+      // Handle scoped packages
+      if (pkg.startsWith("@")) {
+        const parts = pkg.split("/");
+        pkgName = parts[1];
+      }
+
+      // Use find to locate all instances
+      try {
+        const findCmd = `find "${nodeModulesDir}" -type d -name "${pkgName}" ! -path "${nodeModulesDir}/${pkg}" -print`;
+        const foundPaths = execSync(findCmd, { encoding: "utf8" })
+          .split("\n")
+          .filter(Boolean);
+
+        if (foundPaths.length > 0) {
+          console.log(
+            `Found ${foundPaths.length} nested instances of ${pkg}...`
+          );
+
+          // Don't delete them automatically as it might break dependencies
+          // Just log them for now
+          foundPaths.forEach((p) => console.log(`  - ${p}`));
+        }
+      } catch (err) {
+        // Silently continue if find fails
+      }
+    }
+  } catch (err) {
+    console.error("Error searching for nested packages:", err);
+  }
 }
 
 // Install updated packages

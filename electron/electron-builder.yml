@@ -1,0 +1,112 @@
+appId: com.gaming.pos
+productName: Gaming POS System
+copyright: Copyright © 2023
+
+directories:
+  output: dist
+  buildResources: assets
+
+files:
+  - src/**/*
+  - package.json
+  - node_modules/**
+  - "!node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}"
+  - "!node_modules/*/{test,__tests__,tests,powered-test,example,examples}"
+  - "!node_modules/*.d.ts"
+  - "!node_modules/.bin"
+  - "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}"
+  - "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}"
+  - "!**/{appveyor.yml,.travis.yml,circle.yml}"
+  - "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
+  - assets/node.exe
+  - extraResources/node.exe
+  - resources/node.exe
+
+extraResources:
+  - from: "../client/dist"
+    to: "client/dist"
+  - from: "../client/locales"
+    to: "client/locales"
+  - from: "../server/dist"
+    to: "server/dist"
+  - from: "../server/dist/node_modules"
+    to: "server/dist/node_modules"
+    filter: "**/*"
+  - from: "../server/node_modules"
+    to: "server/dist/node_modules"
+    filter: "**/*"
+  - from: "resources/node.exe"
+    to: "node.exe"
+  - from: "extraResources/node.exe"
+    to: "node.exe"
+  - from: "assets/node.exe"
+    to: "node.exe"
+
+asar: true
+
+asarUnpack:
+  - "**/*.node"
+  - "node.exe"
+  - "resources/node.exe"
+  - "resources/server/dist/node_modules/express"
+  - "resources/server/dist/node_modules/cors"
+  - "resources/server/dist/node_modules/mongoose"
+  - "resources/server/dist/node_modules/jsonwebtoken"
+  - "resources/server/dist/node_modules/bcryptjs"
+
+npmRebuild: false
+nodeGypRebuild: false
+
+win:
+  icon: assets/Profile.ico
+  target:
+    - target: nsis
+      arch:
+        - x64
+  artifactName: "${productName}-${version}.${ext}"
+  extraFiles:
+    - from: "resources/node.exe"
+      to: "resources/node.exe"
+    - from: "extraResources/node.exe"
+      to: "resources/node.exe"
+    - from: "assets/node.exe"
+      to: "resources/node.exe"
+
+linux:
+  category: Office
+  icon: assets/icon.png
+  executableName: gaming-pos-system
+  maintainer: POS System Team
+  synopsis: POS System for Gaming Stores
+  description: A comprehensive POS System for Gaming Stores
+  artifactName: "${productName}-${version}.${ext}"
+  target:
+    - target: AppImage
+      arch:
+        - x64
+    - target: deb
+      arch:
+        - x64
+
+appImage:
+  license: LICENSE
+  artifactName: "${productName}-${version}.AppImage"
+  synopsis: POS System for Gaming Stores
+  category: Office
+
+deb:
+  depends:
+    - libnotify4
+    - libxtst6
+    - libnss3
+
+mac:
+  target:
+    - target: dmg
+  category: public.app-category.business
+  icon: assets/icon.icns
+
+publish:
+  provider: github
+  owner: peshang72
+  repo: POS-System

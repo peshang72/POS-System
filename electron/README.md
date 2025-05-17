@@ -1,6 +1,81 @@
 # Gaming POS System - Desktop Application
 
-This directory contains the Electron configuration for running the Gaming POS System as a desktop application.
+This directory contains the Electron desktop application for the Gaming POS System.
+
+## Building the Application
+
+### Prerequisites
+
+- Node.js (v18+)
+- npm (v9+)
+
+### Build for Windows
+
+```bash
+./build-windows.sh
+```
+
+The built application will be available in the `dist/` directory:
+
+- `Gaming POS System Setup x.x.x.exe` - Windows installer
+- `win-unpacked/` - Unpacked application files
+
+### Build for Linux
+
+```bash
+./build-linux.sh
+```
+
+The built application will be available in the `dist/` directory:
+
+- `Gaming POS System-x.x.x.AppImage` - AppImage package
+- `Gaming POS System-x.x.x.deb` - Debian package
+
+## Publishing Releases to GitHub
+
+### Setup (First Time Only)
+
+1. Create a GitHub Personal Access Token with the `repo` scope:
+
+   - Visit: https://github.com/settings/tokens
+   - Generate new token with `repo` scope
+
+2. Set up your environment:
+   ```bash
+   ./setup-env.sh
+   ```
+   This will create a secure `.env` file to store your token.
+
+### Publishing a Release
+
+1. Load your environment variables:
+
+   ```bash
+   source ./env-load.sh
+   ```
+
+2. Publish Windows release:
+
+   ```bash
+   ./publish-windows.sh
+   ```
+
+3. Publish Linux release:
+   ```bash
+   ./publish-release.sh
+   ```
+
+### Testing Publishing (Dry Run)
+
+To test the publishing process without creating an actual release:
+
+```bash
+./publish-windows-dry-run.sh
+```
+
+## Updating the Application
+
+The version number is stored in `package.json`. Update this number before building/publishing a new release.
 
 ## Setup
 
