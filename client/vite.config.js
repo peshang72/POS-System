@@ -73,13 +73,7 @@ export default defineConfig({
       external: ["clsx", "tailwind-merge"],
       output: {
         manualChunks: {
-          vendor: [
-            "react",
-            "react-dom",
-            "react-router-dom",
-            "clsx",
-            "tailwind-merge",
-          ],
+          vendor: ["react", "react-dom", "react-router-dom"],
           ui: [
             "react-hot-toast",
             "lucide-react",
