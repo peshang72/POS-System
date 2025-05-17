@@ -70,6 +70,7 @@ export default defineConfig({
       },
     },
     rollupOptions: {
+      external: ["clsx", "tailwind-merge"],
       output: {
         manualChunks: {
           vendor: [

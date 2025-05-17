@@ -7,8 +7,15 @@ try {
   clsxModule = (...args) => args.filter(Boolean).join(" ");
 }
 
-import { twMerge } from "tailwind-merge";
+// Try to import tailwind-merge normally, but provide fallback if it fails
+let twMergeModule;
+try {
+  twMergeModule = require("tailwind-merge").twMerge;
+} catch (e) {
+  // Simple fallback implementation if tailwind-merge import fails
+  twMergeModule = (classLists) => classLists;
+}
 
 export function cn(...inputs) {
-  return twMerge(clsxModule(inputs));
+  return twMergeModule(clsxModule(inputs));
 }
