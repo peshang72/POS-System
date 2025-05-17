@@ -34,7 +34,7 @@ services:
       repo: peshang72/pos-system
     source_dir: client
     build_command: npm install && npm run build
-    output_dir: dist
+    public_directory: dist
     routes:
       - path: /
 
