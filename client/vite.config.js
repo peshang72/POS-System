@@ -58,11 +58,19 @@ export default defineConfig({
     },
   },
   preview: {
-    allowedHosts: ["listik-pos-vjcxe.ondigitalocean.app"],
+    port: process.env.PORT || 3000,
+    host: "0.0.0.0",
+    allowedHosts: [
+      "listik-pos-vjcxe.ondigitalocean.app",
+      "*.ondigitalocean.app",
+      "localhost",
+    ],
     proxy: {
       "/api": {
-        target: "http://localhost:5000",
+        target: process.env.API_URL || "http://localhost:5000",
         changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path,
       },
     },
   },

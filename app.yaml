@@ -7,11 +7,13 @@ services:
       repo: peshang72/pos-system
     source_dir: server
     build_command: npm install && npm run build
-    run_command: npm start
+    run_command: node src/index.js
     http_port: 5000
     routes:
       - path: /api
-      - path: /api/(.*)
+        preserve_path_prefix: true
+      - path: /auth
+        preserve_path_prefix: true
     envs:
       - key: NODE_ENV
         value: production
@@ -45,6 +47,8 @@ services:
         value: "3000"
       - key: NODE_ENV
         value: "production"
+      - key: API_URL
+        value: "https://listik-pos-vjcxe.ondigitalocean.app"
 
 databases:
   - name: mongodb

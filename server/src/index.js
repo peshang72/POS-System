@@ -97,6 +97,21 @@ app.get("/api/health", (req, res) => {
   res.status(200).json({ status: "ok", message: "API is running" });
 });
 
+// Add explicit debug handler for login in production
+app.post("/auth/login", (req, res) => {
+  logger.error("Caught request at /auth/login without /api prefix");
+  // Forward to the correct route
+  req.url = "/api/auth/login";
+  app.handle(req, res);
+});
+
+// Extra direct route for auth login when routes get misconfigured
+app.post("/api/auth/login", (req, res) => {
+  logger.info("Direct login handler triggered");
+  // Forward to the actual auth router
+  authRoutes.handle(req, res);
+});
+
 // Serve static assets from client/dist in production
 const clientPath = path.join(__dirname, "../../client/dist");
 app.use(express.static(clientPath));
@@ -110,12 +125,25 @@ app.get("*", (req, res, next) => {
   }
 });
 
+// 404 handler for API routes
+app.use("/api/*", (req, res) => {
+  logger.error(`API route not found: ${req.method} ${req.path}`);
+  res.status(404).json({
+    success: false,
+    message: `Cannot ${req.method} ${req.path}`,
+    detailedPath: req.originalUrl,
+    suggestion: "Please check the API endpoint and request method",
+  });
+});
+
 // Error handler middleware
 app.use((err, req, res, next) => {
-  logger.error(err.stack);
+  logger.error(`Error at path ${req.method} ${req.path}: ${err.stack}`);
   res.status(err.statusCode || 500).json({
     success: false,
     message: err.message || "Internal Server Error",
+    path: req.path,
+    method: req.method,
     error: process.env.NODE_ENV === "development" ? err : {},
   });
 });

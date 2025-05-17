@@ -3,11 +3,21 @@ import axios from "axios";
 
 export const AuthContext = createContext();
 
-// Improved check for running in Electron - must match apiConfig.js
+// Improved check for running in Electron - match the one in apiConfig.js
 const isElectron = () => {
+  // First check for the window.electron global
+  if (window && window.api) {
+    return true;
+  }
+
+  // Additional checks for Electron environment
   return Boolean(
     (window && window.process && window.process.type) ||
-      window.navigator.userAgent.includes("Electron")
+      window.navigator.userAgent.includes("Electron") ||
+      // Additional check for contextBridge mode in newer Electron versions
+      (window && window.electron) ||
+      // Check for the context isolation mode
+      (window && window.electronAPI)
   );
 };
 
@@ -31,19 +41,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const checkAuthStatus = async () => {
       if (!token) {
-        // For Electron desktop app, auto-authenticate if no token
-        if (isElectron()) {
-          console.log("Running in Electron, setting default authentication");
-          setIsAuthenticated(true);
-          setUser({
-            id: "desktop-user",
-            name: "Desktop User",
-            role: "admin",
-            languagePreference: "en",
-          });
-          setLoading(false);
-          return;
-        }
+        // No automatic authentication - always require login
         setLoading(false);
         return;
       }
@@ -59,20 +57,8 @@ export const AuthProvider = ({ children }) => {
           logout();
         }
       } catch (error) {
-        // For Electron, auto-authenticate even on error
-        if (isElectron()) {
-          console.log("Authentication error in Electron, using default auth");
-          setIsAuthenticated(true);
-          setUser({
-            id: "desktop-user",
-            name: "Desktop User",
-            role: "admin",
-            languagePreference: "en",
-          });
-        } else {
-          logout();
-          setError(error.response?.data?.message || "Authentication error");
-        }
+        logout();
+        setError(error.response?.data?.message || "Authentication error");
       } finally {
         setLoading(false);
       }
@@ -86,29 +72,18 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
     setError(null);
 
-    // For Electron desktop app, bypass actual login
-    if (isElectron()) {
-      console.log("Login in Electron environment, bypassing authentication");
-      const userData = {
-        id: "desktop-user",
-        name: "Desktop User",
-        role: "admin",
-        languagePreference: "en",
-      };
-
-      localStorage.setItem("token", "desktop-token");
-      setToken("desktop-token");
-      setUser(userData);
-      setIsAuthenticated(true);
-      setLoading(false);
-      return true;
-    }
-
     try {
-      // Use the correct URL with base URL already configured by apiConfig.js
-      const url = isElectron()
-        ? "http://localhost:5000/api/auth/login"
-        : "/api/auth/login";
+      // Determine the appropriate URL based on environment
+      let url = "/api/auth/login";
+
+      // Special case for Electron
+      if (isElectron()) {
+        url = "http://localhost:5000/api/auth/login";
+      }
+
+      // Log the URL for debugging
+      console.log(`Attempting login with URL: ${url}`);
+      console.log(`Current origin: ${window.location.origin}`);
 
       const response = await axios.post(url, {
         username,
@@ -131,6 +106,15 @@ export const AuthProvider = ({ children }) => {
         return false;
       }
     } catch (error) {
+      console.error("Login error:", error);
+      // Add more detailed error information
+      const errorDetails = error.response
+        ? `Status: ${error.response.status}, Message: ${
+            error.response.data?.message || error.response.statusText
+          }`
+        : error.message;
+      console.error(`Login error details: ${errorDetails}`);
+
       setError(error.response?.data?.message || "Login failed");
       setLoading(false);
       return false;
@@ -140,16 +124,6 @@ export const AuthProvider = ({ children }) => {
   // Logout function
   const logout = async () => {
     setLoading(true);
-
-    // For Electron, just clear local state
-    if (isElectron()) {
-      localStorage.removeItem("token");
-      setToken(null);
-      setUser(null);
-      setIsAuthenticated(false);
-      setLoading(false);
-      return;
-    }
 
     try {
       if (isAuthenticated) {

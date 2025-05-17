@@ -24,13 +24,19 @@ const getServerUrl = () => {
   // or if we need to connect to a specific server
   const currentOrigin = window.location.origin;
 
-  // If we're in production or on DigitalOcean App Platform,
-  // use relative paths for API calls
-  if (
-    currentOrigin.includes(":5000") ||
-    !currentOrigin.includes("localhost") ||
-    currentOrigin.includes("ondigitalocean.app")
-  ) {
+  // For DigitalOcean App Platform, use the explicit API URL
+  if (currentOrigin.includes("ondigitalocean.app")) {
+    console.log(
+      "Running on DigitalOcean App Platform - Using explicit API URL"
+    );
+    // Check if API_URL is provided in environment variables, otherwise use current origin
+    const apiUrl = process.env.API_URL || currentOrigin;
+    console.log(`API URL: ${apiUrl}`);
+    return ""; // Use relative URLs with proxy for API calls
+  }
+
+  // If we're in production but not DigitalOcean, use relative paths
+  if (currentOrigin.includes(":5000") || !currentOrigin.includes("localhost")) {
     return "";
   }
 
