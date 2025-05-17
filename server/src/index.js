@@ -31,6 +31,27 @@ const loyaltyRoutes = require("./routes/loyalty.routes");
 // Initialize Express app
 const app = express();
 
+// Direct CORS handling for preflight requests
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+  );
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Electron-App, X-Electron-Version"
+  );
+  res.header("Access-Control-Allow-Credentials", "true");
+
+  // Handle preflight
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
+  next();
+});
+
 // Middleware
 app.use(cors(config.corsOptions));
 app.use(express.json());
@@ -59,6 +80,22 @@ app.use("/api/reports", reportRoutes);
 app.use("/api/settings", settingRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/loyalty", loyaltyRoutes); // Add direct loyalty routes
+
+// Add debug route for auth testing in development
+if (config.nodeEnv === "development") {
+  app.get("/api/auth/status", (req, res) => {
+    res.json({
+      success: true,
+      message: "Auth service is running",
+      isElectron: isElectron,
+    });
+  });
+}
+
+// Health check route for DigitalOcean App Platform
+app.get("/api/health", (req, res) => {
+  res.status(200).json({ status: "ok", message: "API is running" });
+});
 
 // Serve static assets from client/dist in production
 const clientPath = path.join(__dirname, "../../client/dist");
@@ -114,71 +151,57 @@ const startServer = () => {
   }
 };
 
-// Connect to MongoDB unless running in Electron offline mode
-if (isElectron) {
-  logger.info("Running in Electron environment, skipping MongoDB connection");
-  // In Electron, start the server without MongoDB
-  startServer();
-} else {
-  // Log connection details before attempting to connect
-  const connectionDetails = dbValidator.getConnectionDetails(config.mongoURI);
-  logger.info(`Connecting to ${connectionDetails.type} database...`);
+// Always try to connect to MongoDB first, regardless of mode
+// Log connection details before attempting to connect
+const connectionDetails = dbValidator.getConnectionDetails(config.mongoURI);
+logger.info(`Connecting to ${connectionDetails.type} database...`);
 
-  if (!connectionDetails.isValid) {
-    logger.error(
-      "Invalid MongoDB connection string format. Please check your .env file."
-    );
-  }
-
-  // MongoDB connection options for better reliability
-  const mongooseOptions = {
-    serverSelectionTimeoutMS: 10000,
-    socketTimeoutMS: 45000,
-    family: 4, // Use IPv4, skip trying IPv6
-  };
-
-  // Attempt to connect to MongoDB with retries
-  const connectWithRetry = (retryCount = 0, maxRetries = 5) => {
-    mongoose
-      .connect(config.mongoURI, mongooseOptions)
-      .then(() => {
-        logger.info("Connected to MongoDB");
-        startServer();
-      })
-      .catch((err) => {
-        logger.error(`MongoDB connection error: ${err.message}`);
-
-        if (retryCount < maxRetries) {
-          // Retry connection with exponential backoff
-          const retryDelay = Math.pow(2, retryCount) * 1000;
-          logger.info(
-            `Retrying connection in ${retryDelay}ms... (${
-              retryCount + 1
-            }/${maxRetries})`
-          );
-
-          setTimeout(() => {
-            connectWithRetry(retryCount + 1, maxRetries);
-          }, retryDelay);
-        } else if (isElectron) {
-          // In Electron, continue even without MongoDB after max retries
-          logger.warn(
-            "Continuing without MongoDB in Electron environment after max retries"
-          );
-          startServer();
-        } else {
-          // In regular server mode, exit on connection failure after max retries
-          logger.error(
-            "Failed to connect to MongoDB after maximum retries. Exiting..."
-          );
-          process.exit(1);
-        }
-      });
-  };
-
-  // Start connection process
-  connectWithRetry();
+if (!connectionDetails.isValid) {
+  logger.error(
+    "Invalid MongoDB connection string format. Please check your .env file."
+  );
 }
+
+// MongoDB connection options for better reliability
+const mongooseOptions = {
+  serverSelectionTimeoutMS: 10000,
+  socketTimeoutMS: 45000,
+  family: 4, // Use IPv4, skip trying IPv6
+};
+
+// Attempt to connect to MongoDB with retries
+const connectWithRetry = (retryCount = 0, maxRetries = 5) => {
+  mongoose
+    .connect(config.mongoURI, mongooseOptions)
+    .then(() => {
+      logger.info("Connected to MongoDB");
+      startServer();
+    })
+    .catch((err) => {
+      logger.error(`MongoDB connection error: ${err.message}`);
+
+      if (retryCount < maxRetries) {
+        // Retry connection with exponential backoff
+        const retryDelay = Math.pow(2, retryCount) * 1000;
+        logger.info(
+          `Retrying connection in ${retryDelay}ms... (${
+            retryCount + 1
+          }/${maxRetries})`
+        );
+
+        setTimeout(() => {
+          connectWithRetry(retryCount + 1, maxRetries);
+        }, retryDelay);
+      } else {
+        // In any mode, continue without MongoDB after max retries
+        logger.warn("Continuing without MongoDB connection after max retries");
+        startServer();
+      }
+    });
+};
+
+// Start connection process
+connectWithRetry();
 
 // Handle unhandled promise rejections
 process.on("unhandledRejection", (err) => {

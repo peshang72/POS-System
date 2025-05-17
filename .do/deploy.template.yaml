@@ -1,0 +1,52 @@
+spec:
+  name: pos-system
+  services:
+    - name: server
+      routes:
+        - path: /api
+      http_port: 5000
+      source_dir: server
+      github:
+        branch: ${BRANCH_NAME}
+        deploy_on_push: true
+        repo: ${REPOSITORY_NAME}
+      build_command: npm install && npm run build
+      run_command: npm start
+      health_check:
+        http_path: /api/health
+      envs:
+        - key: NODE_ENV
+          value: production
+        - key: MONGO_URI
+          value: ${mongodb_url}
+          scope: RUN_TIME
+        - key: JWT_SECRET
+          type: SECRET
+          scope: RUN_TIME
+        - key: JWT_EXPIRE
+          value: 1d
+        - key: JWT_COOKIE_EXPIRE
+          value: "1"
+        - key: PORT
+          value: "5000"
+
+    - name: client
+      routes:
+        - path: /
+      source_dir: client
+      github:
+        branch: ${BRANCH_NAME}
+        deploy_on_push: true
+        repo: ${REPOSITORY_NAME}
+      build_command: npm install && npm run build
+      output_dir: dist
+      envs:
+        - key: VITE_API_URL
+          scope: BUILD_TIME
+          value: ${_self.APP_URL}
+
+  databases:
+    - name: mongodb
+      engine: MONGODB
+      version: "5.0"
+      production: false

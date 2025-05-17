@@ -1,0 +1,44 @@
+name: pos-system
+services:
+  - name: server
+    github:
+      branch: main
+      deploy_on_push: true
+      repo: peshang72/pos-system
+    source_dir: server
+    build_command: npm install && npm run build
+    run_command: npm start
+    http_port: 5000
+    routes:
+      - path: /api
+    envs:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        scope: RUN_TIME
+        value: ${mongodb_url}
+      - key: JWT_SECRET
+        scope: RUN_TIME
+        type: SECRET
+      - key: JWT_EXPIRE
+        value: 1d
+      - key: JWT_COOKIE_EXPIRE
+        value: "1"
+      - key: PORT
+        value: "5000"
+
+  - name: client
+    github:
+      branch: main
+      deploy_on_push: true
+      repo: peshang72/pos-system
+    source_dir: client
+    build_command: npm install && npm run build
+    output_dir: dist
+    routes:
+      - path: /
+
+databases:
+  - name: mongodb
+    engine: MONGODB
+    version: "5.0"
