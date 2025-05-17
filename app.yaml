@@ -33,7 +33,7 @@ services:
       deploy_on_push: true
       repo: peshang72/pos-system
     source_dir: client
-    build_command: npm install && npm run build
+    build_command: npm install --no-package-lock && npm install && npm run build
     run_command: npm start
     http_port: 3000
     public_directory: dist
@@ -42,6 +42,8 @@ services:
     envs:
       - key: PORT
         value: "3000"
+      - key: NODE_ENV
+        value: "production"
 
 databases:
   - name: mongodb
