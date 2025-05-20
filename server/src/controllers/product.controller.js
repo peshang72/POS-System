@@ -140,7 +140,7 @@ exports.generateBarcode = async (req, res) => {
 exports.exportProductsToCSV = async (req, res) => {
   try {
     // Get query parameters for filtering
-    const { active, category } = req.query;
+    const { active, category, ids } = req.query;
 
     // Build query based on filters
     let query = {};
@@ -151,6 +151,15 @@ exports.exportProductsToCSV = async (req, res) => {
 
     if (category) {
       query.category = category;
+    }
+
+    // If specific product IDs were provided
+    if (ids) {
+      // Convert comma-separated string to array
+      const productIds = ids.split(",");
+
+      // Make sure we only include these specific products
+      query._id = { $in: productIds };
     }
 
     // Fetch products based on query
@@ -168,14 +177,16 @@ exports.exportProductsToCSV = async (req, res) => {
         category: product.category?.name?.en || "",
         price: product.price || 0,
         cost: product.cost || 0,
+        quantity: product.quantity || 0,
       };
     });
 
     // Convert to CSV string
-    let csvString = "sku,barcode,name_en,name_ku,category,price,cost\n";
+    let csvString =
+      "sku,barcode,name_en,name_ku,category,price,cost,quantity\n";
 
     csvData.forEach((item) => {
-      csvString += `"${item.sku}","${item.barcode}","${item.name_en}","${item.name_ku}","${item.category}","${item.price}","${item.cost}"\n`;
+      csvString += `"${item.sku}","${item.barcode}","${item.name_en}","${item.name_ku}","${item.category}","${item.price}","${item.cost}","${item.quantity}"\n`;
     });
 
     // Set response headers for file download

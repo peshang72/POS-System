@@ -38,6 +38,18 @@ const Products = () => {
   const [selectedCategories, setSelectedCategories] = useState([]);
   const productsPerPage = 20;
 
+  // New state for export functionality
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportFilename, setExportFilename] = useState("product_barcodes");
+  const [productsToExport, setProductsToExport] = useState([]);
+  const [exportedProducts, setExportedProducts] = useState([]);
+  const [hideExported, setHideExported] = useState(false);
+
+  // New state for row range selection
+  const [startRow, setStartRow] = useState(1);
+  const [endRow, setEndRow] = useState(1);
+  const [selectedRanges, setSelectedRanges] = useState([]);
+
   // Organize categories into a hierarchical structure
   const [parentCategories, setParentCategories] = useState([]);
   const [childCategories, setChildCategories] = useState({});
@@ -431,10 +443,49 @@ const Products = () => {
 
   // Function to export products to CSV for barcode printing
   const exportProductsToCSV = async () => {
+    // Prepare products for export
+    const productsForExport = filteredProducts.map((product) => ({
+      ...product,
+      selected: !exportedProducts.includes(product._id),
+    }));
+
+    // Show the export modal instead of directly exporting
+    setProductsToExport(productsForExport);
+
+    // Reset range selection
+    setStartRow(1);
+
+    // Set end row to number of visible products
+    const visibleCount = productsForExport.filter(
+      (product) => !hideExported || !exportedProducts.includes(product._id)
+    ).length;
+    setEndRow(visibleCount);
+
+    // Clear any previously selected ranges
+    setSelectedRanges([]);
+
+    // Open the modal
+    setShowExportModal(true);
+  };
+
+  // Function to actually perform the export with selected products
+  const performExport = async () => {
     try {
+      // Get the IDs of selected products
+      const selectedProductIds = productsToExport
+        .filter((product) => product.selected)
+        .map((product) => product._id);
+
+      if (selectedProductIds.length === 0) {
+        return; // Nothing to export
+      }
+
+      // Create the query string with selected product IDs
+      const queryString = `?ids=${selectedProductIds.join(",")}`;
+
       // Use axios to make a request with the default headers that include authorization
       const response = await axios.get(
-        "/api/products/export-barcodes?active=true",
+        `/api/products/export-barcodes${queryString}`,
         {
           responseType: "blob", // Important for file downloads
         }
@@ -446,7 +497,7 @@ const Products = () => {
       // Create a link element to trigger download
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", "product_barcodes.csv");
+      link.setAttribute("download", `${exportFilename}.csv`);
 
       // Append to document and trigger click
       document.body.appendChild(link);
@@ -455,11 +506,177 @@ const Products = () => {
       // Clean up
       window.URL.revokeObjectURL(url);
       document.body.removeChild(link);
+
+      // Store exported product IDs to localStorage and update state
+      const newExportedProducts = [...exportedProducts, ...selectedProductIds];
+      setExportedProducts(newExportedProducts);
+      localStorage.setItem(
+        "exportedProducts",
+        JSON.stringify(newExportedProducts)
+      );
+
+      // Close the modal
+      setShowExportModal(false);
     } catch (error) {
       console.error("Error exporting products:", error);
       alert("Failed to export products");
     }
   };
+
+  // Toggle selection for a product in the export list
+  const toggleProductSelection = (productId) => {
+    setProductsToExport((prevProducts) =>
+      prevProducts.map((product) =>
+        product._id === productId
+          ? { ...product, selected: !product.selected }
+          : product
+      )
+    );
+  };
+
+  // Select or deselect all products
+  const toggleSelectAll = (selectAll) => {
+    setProductsToExport((prevProducts) =>
+      prevProducts.map((product) =>
+        hideExported && exportedProducts.includes(product._id)
+          ? product // Don't change hidden products
+          : { ...product, selected: selectAll }
+      )
+    );
+  };
+
+  // Add a row range to select products
+  const addRowRange = () => {
+    // Validate input
+    const start = parseInt(startRow);
+    const end = parseInt(endRow);
+
+    if (isNaN(start) || isNaN(end) || start < 1 || end < 1) {
+      alert(t("products.invalidRowRange") || "Please enter valid row numbers");
+      return;
+    }
+
+    if (start > end) {
+      alert(
+        t("products.startGreaterThanEnd") ||
+          "Start row must be less than or equal to end row"
+      );
+      return;
+    }
+
+    // Get visible products (considering hideExported flag)
+    const visibleProducts = productsToExport.filter(
+      (product) => !hideExported || !exportedProducts.includes(product._id)
+    );
+
+    if (start > visibleProducts.length || end > visibleProducts.length) {
+      alert(
+        t("products.rowOutOfRange") ||
+          `Row numbers must be between 1 and ${visibleProducts.length}`
+      );
+      return;
+    }
+
+    // Add the range
+    const newRange = { start, end };
+    setSelectedRanges([...selectedRanges, newRange]);
+
+    // Apply the selection to products - this will select only products in ranges and deselect all others
+    applyRangeSelection([...selectedRanges, newRange]);
+  };
+
+  // Apply selection based on all ranges
+  const applyRangeSelection = (ranges) => {
+    // Get visible products (considering hideExported flag)
+    const visibleProducts = productsToExport.filter(
+      (product) => !hideExported || !exportedProducts.includes(product._id)
+    );
+
+    // Create a Set of indices that should be selected
+    const indicesToSelect = new Set();
+
+    // Add all indices from all ranges
+    ranges.forEach((range) => {
+      for (let i = range.start - 1; i < range.end; i++) {
+        indicesToSelect.add(i);
+      }
+    });
+
+    // Apply selection - FIRST DESELECT ALL, then select only those in ranges
+    setProductsToExport((prevProducts) => {
+      // Create a map from visible products to their indices
+      const productToIndexMap = new Map();
+      visibleProducts.forEach((product, index) => {
+        productToIndexMap.set(product._id, index);
+      });
+
+      return prevProducts.map((product) => {
+        // If product is hidden, don't change its selection
+        if (hideExported && exportedProducts.includes(product._id)) {
+          return product;
+        }
+
+        const index = productToIndexMap.get(product._id);
+
+        // If this product's index is in our selection set, select it, otherwise deselect it
+        if (indicesToSelect.has(index)) {
+          return { ...product, selected: true };
+        } else {
+          return { ...product, selected: false };
+        }
+      });
+    });
+  };
+
+  // Remove a range
+  const removeRange = (index) => {
+    const newRanges = [...selectedRanges];
+    newRanges.splice(index, 1);
+    setSelectedRanges(newRanges);
+
+    // Re-apply selection with the updated ranges
+    applyRangeSelection(newRanges);
+  };
+
+  // Clear all ranges
+  const clearRanges = () => {
+    setSelectedRanges([]);
+
+    // Reset selection to default (no ranges)
+    setProductsToExport((prevProducts) =>
+      prevProducts.map((product) =>
+        hideExported && exportedProducts.includes(product._id)
+          ? product // Don't change hidden products
+          : { ...product, selected: false }
+      )
+    );
+  };
+
+  // Load exported products from localStorage on component mount
+  useEffect(() => {
+    const savedExportedProducts = localStorage.getItem("exportedProducts");
+    if (savedExportedProducts) {
+      setExportedProducts(JSON.parse(savedExportedProducts));
+    }
+  }, []);
+
+  // Update end row when hide exported changes
+  useEffect(() => {
+    if (showExportModal) {
+      // Recalculate visible product count
+      const visibleCount = productsToExport.filter(
+        (product) => !hideExported || !exportedProducts.includes(product._id)
+      ).length;
+
+      // Update end row
+      setEndRow(Math.min(endRow, visibleCount) || visibleCount);
+
+      // If we have ranges, reapply them with updated visibility
+      if (selectedRanges.length > 0) {
+        applyRangeSelection(selectedRanges);
+      }
+    }
+  }, [hideExported, showExportModal]);
 
   // Function to handle deletion of a product
   const handleDeleteProduct = async () => {
@@ -1120,6 +1337,309 @@ const Products = () => {
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Export Products Modal */}
+      {showExportModal && (
+        <div className="fixed z-10 inset-0 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div
+              className="fixed inset-0 bg-[#000000] bg-opacity-75 transition-opacity"
+              aria-hidden="true"
+              onClick={() => setShowExportModal(false)}
+            ></div>
+
+            <span
+              className="hidden sm:inline-block sm:align-middle sm:h-screen"
+              aria-hidden="true"
+            >
+              &#8203;
+            </span>
+
+            <div className="inline-block align-bottom bg-[#1A1A1A] rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
+              <div className="bg-[#1A1A1A] px-4 pt-5 pb-4 sm:p-6">
+                <div className="sm:flex sm:items-start">
+                  <div className="w-full">
+                    <h3 className="text-lg leading-6 font-medium text-white mb-4">
+                      {t("products.export") || "Export Products"}
+                    </h3>
+
+                    {/* Filename input */}
+                    <div className="mb-4">
+                      <label
+                        htmlFor="filename"
+                        className="block text-sm font-medium text-zinc-300 mb-1"
+                      >
+                        {t("products.filename") || "Filename"}
+                      </label>
+                      <input
+                        type="text"
+                        id="filename"
+                        className="w-full px-3 py-2 rounded-md bg-[#262626] border border-[#363636] text-white focus:outline-none focus:ring-2 focus:ring-[#7E3FF2]"
+                        value={exportFilename}
+                        onChange={(e) => setExportFilename(e.target.value)}
+                        placeholder="product_barcodes"
+                      />
+                    </div>
+
+                    {/* Hide already exported toggle */}
+                    <div className="mb-3 flex items-center justify-between">
+                      <div className="flex items-center">
+                        <input
+                          id="hide-exported"
+                          type="checkbox"
+                          className="h-4 w-4 text-[#7E3FF2] rounded border-[#363636] focus:ring-[#7E3FF2]"
+                          checked={hideExported}
+                          onChange={() => setHideExported(!hideExported)}
+                        />
+                        <label
+                          htmlFor="hide-exported"
+                          className="ml-2 block text-sm text-zinc-300"
+                        >
+                          {t("products.hideExported") ||
+                            "Hide previously exported products"}
+                        </label>
+                      </div>
+
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => toggleSelectAll(true)}
+                          className="text-xs px-2 py-1 rounded-md bg-[#262626] text-white hover:bg-[#363636]"
+                        >
+                          {t("common.selectAll") || "Select All"}
+                        </button>
+                        <button
+                          onClick={() => toggleSelectAll(false)}
+                          className="text-xs px-2 py-1 rounded-md bg-[#262626] text-white hover:bg-[#363636]"
+                        >
+                          {t("common.deselectAll") || "Deselect All"}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Row Range Selection */}
+                    <div className="mb-4 p-3 bg-[#262626] rounded-md">
+                      <h4 className="text-sm font-medium text-zinc-300 mb-2">
+                        {t("products.selectRowRange") || "Select Row Range"}
+                      </h4>
+
+                      <div className="flex items-center space-x-2 mb-3">
+                        <div className="flex items-center">
+                          <label
+                            htmlFor="start-row"
+                            className="block text-xs text-zinc-400 mr-2"
+                          >
+                            {t("products.fromRow") || "From Row"}:
+                          </label>
+                          <input
+                            type="number"
+                            id="start-row"
+                            className="w-16 px-2 py-1 rounded-md bg-[#1A1A1A] border border-[#363636] text-white text-sm focus:outline-none focus:ring-1 focus:ring-[#7E3FF2]"
+                            value={startRow}
+                            onChange={(e) => setStartRow(e.target.value)}
+                            min="1"
+                          />
+                        </div>
+
+                        <div className="flex items-center">
+                          <label
+                            htmlFor="end-row"
+                            className="block text-xs text-zinc-400 mr-2"
+                          >
+                            {t("products.toRow") || "To Row"}:
+                          </label>
+                          <input
+                            type="number"
+                            id="end-row"
+                            className="w-16 px-2 py-1 rounded-md bg-[#1A1A1A] border border-[#363636] text-white text-sm focus:outline-none focus:ring-1 focus:ring-[#7E3FF2]"
+                            value={endRow}
+                            onChange={(e) => setEndRow(e.target.value)}
+                            min="1"
+                          />
+                        </div>
+
+                        <button
+                          onClick={addRowRange}
+                          className="px-2 py-1 rounded-md bg-[#363636] text-white text-xs hover:bg-[#464646] ml-auto"
+                        >
+                          {t("products.addRange") || "Add Range & Select Only"}
+                        </button>
+                      </div>
+
+                      {/* Display selected ranges */}
+                      {selectedRanges.length > 0 && (
+                        <div className="mb-2">
+                          <div className="text-xs text-zinc-400 mb-1">
+                            {t("products.selectedRanges") || "Selected Ranges"}:
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedRanges.map((range, index) => (
+                              <div
+                                key={index}
+                                className="px-2 py-1 bg-[#363636] rounded-md text-xs text-white flex items-center"
+                              >
+                                {range.start === range.end
+                                  ? `${t("products.row") || "Row"} ${
+                                      range.start
+                                    }`
+                                  : `${t("products.rows") || "Rows"} ${
+                                      range.start
+                                    }-${range.end}`}
+                                <button
+                                  onClick={() => removeRange(index)}
+                                  className="ml-2 text-zinc-400 hover:text-white"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                            {selectedRanges.length > 0 && (
+                              <button
+                                onClick={clearRanges}
+                                className="px-2 py-1 text-xs text-zinc-400 hover:text-white"
+                              >
+                                {t("common.clearAll") || "Clear All"}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="text-xs text-zinc-400">
+                        {t("products.totalRows") || "Total rows"}:{" "}
+                        {
+                          productsToExport.filter(
+                            (product) =>
+                              !hideExported ||
+                              !exportedProducts.includes(product._id)
+                          ).length
+                        }
+                      </div>
+                    </div>
+
+                    {/* Products list */}
+                    <div className="mt-2 max-h-80 overflow-y-auto custom-scrollbar bg-[#262626] rounded-md p-2">
+                      <table className="min-w-full divide-y divide-[#363636]">
+                        <thead className="bg-[#1A1A1A]">
+                          <tr>
+                            <th className="px-2 py-2 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider w-10">
+                              {t("products.row") || "#"}
+                            </th>
+                            <th className="px-2 py-2 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider w-12">
+                              <span className="sr-only">
+                                {t("common.select") || "Select"}
+                              </span>
+                            </th>
+                            <th className="px-2 py-2 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                              {t("products.name") || "Name"}
+                            </th>
+                            <th className="px-2 py-2 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                              {t("products.sku") || "SKU"}
+                            </th>
+                            <th className="px-2 py-2 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                              {t("products.quantity") || "Quantity"}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-[#262626] divide-y divide-[#363636]">
+                          {productsToExport
+                            .filter(
+                              (product) =>
+                                !hideExported ||
+                                !exportedProducts.includes(product._id)
+                            )
+                            .map((product, index) => (
+                              <tr
+                                key={product._id}
+                                className={
+                                  exportedProducts.includes(product._id)
+                                    ? "opacity-50"
+                                    : ""
+                                }
+                              >
+                                <td className="px-2 py-2 text-sm text-zinc-400 text-center">
+                                  {index + 1}
+                                </td>
+                                <td className="px-2 py-2">
+                                  <input
+                                    type="checkbox"
+                                    className="h-4 w-4 text-[#7E3FF2] rounded border-[#363636] focus:ring-[#7E3FF2]"
+                                    checked={product.selected}
+                                    onChange={() =>
+                                      toggleProductSelection(product._id)
+                                    }
+                                  />
+                                </td>
+                                <td className="px-2 py-2 text-sm text-white">
+                                  {product.name.en}
+                                  {exportedProducts.includes(product._id) && (
+                                    <span className="ml-2 text-xs text-[#F2B705]">
+                                      ({t("products.exported") || "Exported"})
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="px-2 py-2 text-sm text-white">
+                                  {product.sku}
+                                </td>
+                                <td className="px-2 py-2 text-sm text-white">
+                                  {product.quantity}
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+
+                      {productsToExport.filter(
+                        (product) =>
+                          !hideExported ||
+                          !exportedProducts.includes(product._id)
+                      ).length === 0 && (
+                        <div className="text-center py-4 text-zinc-400">
+                          {t("products.noProductsToExport") ||
+                            "No products to export"}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-[#262626] px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-gradient-to-r from-[#7E3FF2] to-[#3D9CF2] text-base font-medium text-white hover:from-[#8F50FF] hover:to-[#4EADFF] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#7E3FF2] sm:ml-3 sm:w-auto sm:text-sm"
+                  onClick={performExport}
+                >
+                  {t("products.export") || "Export"}
+                </button>
+                <button
+                  type="button"
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-[#363636] shadow-sm px-4 py-2 bg-[#262626] text-base font-medium text-white hover:bg-[#363636] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#363636] sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                  onClick={() => setShowExportModal(false)}
+                >
+                  {t("common.cancel") || "Cancel"}
+                </button>
+                {exportedProducts.length > 0 && (
+                  <button
+                    type="button"
+                    className="mt-3 w-full inline-flex justify-center rounded-md border border-[#363636] shadow-sm px-4 py-2 bg-[#262626] text-xs font-medium text-zinc-400 hover:bg-[#363636] focus:outline-none sm:mt-0 sm:w-auto"
+                    onClick={() => {
+                      setExportedProducts([]);
+                      localStorage.removeItem("exportedProducts");
+                      setProductsToExport((prevProducts) =>
+                        prevProducts.map((product) => ({
+                          ...product,
+                          selected: true,
+                        }))
+                      );
+                    }}
+                  >
+                    {t("products.clearExportHistory") || "Clear Export History"}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
