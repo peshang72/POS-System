@@ -22,10 +22,19 @@ const queryClient = new QueryClient({
   },
 });
 
+// Configure React Router future flags
+const routerOptions = {
+  future: {
+    v7_startTransition: true,
+    v7_relativeSplatPath: true,
+    v7_stateRendering: true,
+  },
+};
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <HashRouter>
+      <HashRouter {...routerOptions}>
         <I18nextProvider i18n={i18n}>
           <AuthProvider>
             <App />

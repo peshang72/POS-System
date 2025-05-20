@@ -106,7 +106,10 @@ exports.getDashboardData = async (req, res) => {
     const lowStockTrend = lowStockCount <= lowStockLastWeek ? "up" : "down";
     const lowStockPercent =
       lowStockLastWeek > 0
-        ? `${Math.round(Math.abs((lowStockCount - lowStockLastWeek) / lowStockLastWeek) * 100)}%`
+        ? `${Math.round(
+            Math.abs((lowStockCount - lowStockLastWeek) / lowStockLastWeek) *
+              100
+          )}%`
         : "0%";
 
     // Count active users
@@ -154,8 +157,8 @@ exports.getDashboardData = async (req, res) => {
           transaction.paymentStatus === "paid"
             ? "Completed"
             : transaction.paymentStatus === "pending"
-              ? "Pending"
-              : "Failed",
+            ? "Pending"
+            : "Failed",
       })),
     };
 

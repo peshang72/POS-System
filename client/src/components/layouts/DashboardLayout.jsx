@@ -19,6 +19,8 @@ import {
   Gamepad2,
 } from "lucide-react";
 import UpdateNotification from "../ui/UpdateNotification";
+import ElectronInfo from "../ElectronInfo";
+import ServerLogs from "../ServerLogs";
 
 // Neon Border Component
 const NeonBorder = ({ active, color = "accent" }) => {
@@ -290,55 +292,64 @@ const DashboardLayout = () => {
         </button>
       </div>
 
+      {/* Mobile sidebar backdrop */}
+      {mobileSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
+          onClick={() => setMobileSidebarOpen(false)}
+        ></div>
+      )}
+
       {/* Sidebar */}
       <aside
         ref={sidebarRef}
+        className={`fixed lg:static inset-y-0 left-0 w-64 bg-gray-900 shadow-xl overflow-y-auto overflow-x-hidden transition-all duration-400 transform z-40 ${
+          mobileSidebarOpen
+            ? "translate-x-0"
+            : "-translate-x-full lg:translate-x-0"
+        } ${sidebarCollapsed && !isHovering ? "lg:w-16" : "lg:w-64"}`}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        style={{
-          width: sidebarCollapsed && !isHovering ? "5rem" : "16rem",
-          transition: "width 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)", // Easing function for smoother animation
-        }}
-        className={`bg-[#1A1A1A] fixed inset-y-0 left-0 z-40 transition-all duration-400 
-          ${mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"} 
-          md:translate-x-0 md:static border-r border-gray-800 shadow-lg overflow-hidden`}
       >
-        <div className="flex flex-col h-full relative overflow-hidden">
-          {/* Animated Gradient Background */}
+        <div className="py-4 flex flex-col h-full relative">
           <AnimatedGradient />
 
-          {/* Sidebar Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-800 relative z-10">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-accent rounded-md flex items-center justify-center shadow-neon animate-border-glow">
-                <Gamepad2 size={18} className="text-white" />
-              </div>
+          {/* Logo and sidebar toggle */}
+          <div className="flex items-center justify-between px-4 mb-6 relative z-10">
+            <div className="flex items-center">
+              <GamingIcon icon={Gamepad2} pulse={true} />
               <h1
-                className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-accent to-success transition-opacity duration-400"
+                className={`ml-3 font-bold text-xl transition-all duration-400 whitespace-nowrap`}
                 style={{
                   opacity: textVisible ? 1 : 0,
                   maxWidth: textVisible ? "200px" : "0",
                   overflow: "hidden",
-                  whiteSpace: "nowrap",
-                  transition: "opacity 0.4s ease, max-width 0.4s ease",
+                  visibility: textVisible ? "visible" : "hidden",
                 }}
               >
                 {t("app.title")}
               </h1>
             </div>
-
-            {textVisible && (
-              <button
-                onClick={toggleSidebar}
-                className="p-2 rounded-md bg-secondary-bg text-white hidden md:block hover:bg-accent hover:bg-opacity-20 transition-colors"
-              >
-                <X size={18} />
-              </button>
-            )}
+            <button
+              onClick={toggleSidebar}
+              className="lg:flex hidden justify-center items-center h-8 w-8 rounded-md hover:bg-secondary-bg transition-colors"
+            >
+              {sidebarCollapsed && !isHovering ? (
+                <ChevronRight size={18} />
+              ) : (
+                <ChevronLeft size={18} />
+              )}
+            </button>
+            <button
+              onClick={() => setMobileSidebarOpen(false)}
+              className="lg:hidden flex justify-center items-center h-8 w-8 rounded-md hover:bg-secondary-bg transition-colors"
+            >
+              <X size={18} />
+            </button>
           </div>
 
-          {/* Navigation Links */}
-          <nav className="flex-1 pt-6 px-2 space-y-1 overflow-y-auto relative z-10">
+          {/* Navigation */}
+          <nav className="px-2 flex-1 space-y-1 relative z-10">
             <NavItem
               to="/"
               icon={LayoutDashboard}
@@ -376,7 +387,17 @@ const DashboardLayout = () => {
             />
           </nav>
 
-          {/* Sidebar Footer */}
+          {/* Add ElectronInfo component here */}
+          <div className="px-2 relative z-10">
+            <ElectronInfo />
+          </div>
+
+          {/* Add ServerLogs component here */}
+          <div className="px-2 relative z-10">
+            <ServerLogs />
+          </div>
+
+          {/* Footer buttons */}
           <div className="p-4 border-t border-gray-800 backdrop-blur-sm relative z-10">
             <div className="flex flex-col gap-2">
               <FooterButton

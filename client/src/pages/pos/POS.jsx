@@ -30,6 +30,40 @@ import ReceiptPreview from "../../components/pos/ReceiptPreview";
 import LoyaltyPointsRedemption from "../../components/pos/LoyaltyPointsRedemption";
 import axios from "axios";
 
+// Notification toast component
+const NotificationToast = ({ message, type = "success", onClose }) => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose();
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div className="fixed bottom-4 right-4 z-50 animate-slide-up">
+      <div
+        className={`rounded-md shadow-lg p-4 ${
+          type === "success" ? "bg-green-600" : "bg-red-600"
+        } text-white flex items-start gap-3 max-w-md`}
+      >
+        <div className="flex-shrink-0 pt-0.5">
+          {type === "success" ? <CheckCircle2 size={20} /> : <X size={20} />}
+        </div>
+        <div className="flex-1">
+          <p className="font-medium">{message}</p>
+        </div>
+        <button
+          onClick={onClose}
+          className="flex-shrink-0 text-white ml-3 hover:bg-white hover:bg-opacity-20 p-1 rounded-full"
+        >
+          <X size={14} />
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const POS = () => {
   const { t } = useTranslation();
   const [cart, setCart] = useState([]);
@@ -54,6 +88,9 @@ const POS = () => {
   const [transaction, setTransaction] = useState(null);
   const [isSavingTransaction, setIsSavingTransaction] = useState(false);
   const [pendingTransaction, setPendingTransaction] = useState(null);
+
+  // Notification state
+  const [notification, setNotification] = useState(null);
 
   // Customer hook
   const {
@@ -251,6 +288,19 @@ const POS = () => {
   const [showLoyaltyRedemption, setShowLoyaltyRedemption] = useState(false);
   const [loyaltyDiscount, setLoyaltyDiscount] = useState(0);
 
+  // Show a startup notification that cash payments are now implemented
+  useEffect(() => {
+    if (!isLoading) {
+      setNotification({
+        type: "success",
+        message: t(
+          "pos.cashPaymentEnabled",
+          "Cash payment is now enabled! Complete a sale to update inventory quantities."
+        ),
+      });
+    }
+  }, [isLoading, t]);
+
   // Handle loyalty points redemption
   const handleLoyaltyRedemption = (redemptionData) => {
     if (redemptionData && redemptionData.monetaryValue) {
@@ -281,16 +331,28 @@ const POS = () => {
     const totalDiscount = calculatedDiscount + loyaltyDiscount;
     const finalTotal = Math.max(0, subtotal - totalDiscount);
 
+    // Generate a temporary invoice number (server will replace this)
+    const tempInvoiceNumber = `INV-${Date.now()}`;
+
+    // Map frontend discount type to backend accepted values
+    const mappedDiscountType =
+      discountType === "percent" ? "percentage" : "fixed";
+
     return {
+      // Don't set _id - MongoDB will generate this
       customer: selectedCustomer?._id, // May be null for guest transactions
       items: cart.map((item) => ({
         product: item._id,
         name: item.name.en,
         price: item.price,
         quantity: item.quantity,
+        unitPrice: item.price, // Add required unitPrice field
+        subtotal: item.price * item.quantity, // Add required subtotal field
+        discount: 0, // Add default discount field
+        discountType: "fixed", // Add default discountType field
       })),
       subtotal,
-      discountType,
+      discountType: mappedDiscountType,
       discountValue:
         discountType === "percent" ? discountPercent : discountAmount,
       discountAmount: calculatedDiscount,
@@ -298,31 +360,100 @@ const POS = () => {
       total: finalTotal,
       currency,
       exchangeRate: currency === "IQD" ? exchangeRate : 1,
-      paymentMethod: "cash", // Default, can be updated
+      paymentMethod: "cash", // Default to cash payment
+      paymentDetails: {}, // Will be filled in during checkout
+      register: localStorage.getItem("register") || "main", // Default register ID
+      invoiceNumber: tempInvoiceNumber, // Add required invoiceNumber field
       createdAt: new Date(),
-      _id: "PREVIEW",
     };
   };
 
+  // Handle confirming the transaction from the receipt preview
+  const handleConfirmTransaction = async (paymentDetails) => {
+    console.log("handleConfirmTransaction called with:", paymentDetails);
+    await saveTransaction(paymentDetails);
+  };
+
   // Save transaction to server
-  const saveTransaction = async () => {
-    if (!pendingTransaction) return;
+  const saveTransaction = async (paymentData = {}) => {
+    console.log("saveTransaction called with:", paymentData);
+
+    if (!pendingTransaction) {
+      console.error("No pending transaction found");
+      return;
+    }
 
     setIsSavingTransaction(true);
 
     try {
+      // Ensure discountType is valid for backend (only "percentage" or "fixed" allowed)
+      const cleanedPendingTransaction = {
+        ...pendingTransaction,
+      };
+
+      // Make sure we're always sending the correct discount type value to backend
+      if (
+        cleanedPendingTransaction.discountType === "amount" ||
+        cleanedPendingTransaction.discountType === "percent"
+      ) {
+        cleanedPendingTransaction.discountType =
+          cleanedPendingTransaction.discountType === "percent"
+            ? "percentage"
+            : "fixed";
+      }
+
+      // Update transaction with payment details
+      const transactionData = {
+        ...cleanedPendingTransaction,
+        paymentDetails: paymentData,
+        paymentStatus: "paid", // Default status for cash payments
+      };
+
+      console.log("Sending transaction data to server:", transactionData);
+
       // Send to server
-      const response = await axios.post(
-        "/api/transactions",
-        pendingTransaction
-      );
+      const response = await axios.post("/api/transactions", transactionData);
+      console.log("Server response:", response.data);
 
       // Save the transaction response for receipt
       setTransaction(response.data);
       setPendingTransaction(null);
+
+      // Show success notification
+      setNotification({
+        type: "success",
+        message: t(
+          "pos.transactionSuccess",
+          "Sale completed successfully! Products have been updated in inventory."
+        ),
+      });
     } catch (err) {
-      setError(err.response?.data?.error || "Failed to save transaction");
-      console.error("Error saving transaction:", err);
+      console.error("Error saving transaction details:", err);
+
+      // Extract detailed validation errors if available
+      const errorDetails =
+        err.response?.data?.errors || err.response?.data?.error || err.message;
+      console.error("Validation errors:", errorDetails);
+
+      let errorMessage = t("pos.transactionError", "Failed to complete sale.");
+
+      if (typeof errorDetails === "object") {
+        // If we have structured validation errors, show the first one
+        const firstError =
+          Object.values(errorDetails)[0]?.message ||
+          JSON.stringify(errorDetails);
+        errorMessage = `Validation error: ${firstError}`;
+      } else if (typeof errorDetails === "string") {
+        errorMessage = errorDetails;
+      }
+
+      setError(errorMessage);
+
+      // Show error notification
+      setNotification({
+        type: "error",
+        message: errorMessage,
+      });
     } finally {
       setIsSavingTransaction(false);
     }
@@ -357,6 +488,7 @@ const POS = () => {
 
     // Prepare transaction data and show preview
     const preparedTransaction = prepareTransactionData();
+    console.log("Setting pendingTransaction:", preparedTransaction);
     setPendingTransaction(preparedTransaction);
     setShowReceiptPreview(true);
   };
@@ -365,11 +497,6 @@ const POS = () => {
   const handleAddNewCustomer = () => {
     // This would normally open a form to add a new customer
     alert("Add customer feature will be implemented soon!");
-  };
-
-  // Handle confirming the transaction from the receipt preview
-  const handleConfirmTransaction = async () => {
-    await saveTransaction();
   };
 
   // Handle closing receipt and starting new sale
@@ -414,6 +541,15 @@ const POS = () => {
   return (
     <div className="flex flex-col h-[calc(100vh-7rem)]">
       <h1 className="text-2xl font-bold mb-4">{t("navigation.pos")}</h1>
+
+      {/* Notification Toast */}
+      {notification && (
+        <NotificationToast
+          message={notification.message}
+          type={notification.type}
+          onClose={() => setNotification(null)}
+        />
+      )}
 
       <div className="flex flex-row gap-6 h-full">
         {/* Products Section */}
@@ -471,7 +607,7 @@ const POS = () => {
 
             {/* Exchange Rate Settings */}
             {showExchangeSettings && (
-              <div className="p-3 bg-gray-800 rounded-md shadow-lg border border-gray-700 animate-fadeIn">
+              <div className="p-3 bg-gray-800 rounded-md shadow-lg border border-gray-700 animate-fade-in">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-sm font-medium text-gray-300">
                     Exchange Rate Settings
@@ -523,7 +659,7 @@ const POS = () => {
                 className={`flex items-center gap-2 whitespace-nowrap px-4 py-2 rounded-full transition-colors 
                   ${
                     activeCategory === category._id
-                      ? "bg-accent text-white shadow-neon"
+                      ? "bg-accent text-white shadow-lg shadow-accent/40"
                       : "bg-secondary-bg text-gray-300 hover:bg-gray-700"
                   }`}
                 onClick={() => setActiveCategory(category._id)}
@@ -548,7 +684,7 @@ const POS = () => {
                     className="bg-secondary-bg rounded-lg overflow-visible group relative"
                   >
                     <div
-                      className="relative cursor-pointer transition-all duration-300 rounded-lg shadow-sm hover:shadow-neon"
+                      className="relative cursor-pointer transition-all duration-300 rounded-lg shadow-sm hover:shadow-lg hover:shadow-accent/40"
                       onClick={() => addToCart(product)}
                     >
                       {product.images && product.images.length > 0 ? (
@@ -1091,6 +1227,7 @@ const POS = () => {
       <ReceiptPreview
         isOpen={showReceiptPreview}
         onClose={handleCancelTransaction}
+        onNewSale={handleNewSale}
         transaction={transaction || pendingTransaction}
         cart={cart}
         customer={selectedCustomer}
@@ -1103,7 +1240,6 @@ const POS = () => {
         }
         currency={currency}
         exchangeRate={exchangeRate}
-        onNewSale={handleNewSale}
         isPending={!transaction && !!pendingTransaction}
         onConfirm={handleConfirmTransaction}
         isSaving={isSavingTransaction}
@@ -1113,19 +1249,3 @@ const POS = () => {
 };
 
 export default POS;
-
-/* Add this CSS to the component for the animation and shadow-neon effect */
-const styles = document.createElement("style");
-styles.innerHTML = `
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-5px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.animate-fadeIn {
-  animation: fadeIn 0.2s ease-out forwards;
-}
-.shadow-neon {
-  box-shadow: 0 0 8px 2px rgba(120, 86, 255, 0.5);
-}
-`;
-document.head.appendChild(styles);

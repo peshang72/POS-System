@@ -79,6 +79,11 @@ const TransactionSchema = new mongoose.Schema(
       default: 0,
       min: [0, "Discount amount cannot be negative"],
     },
+    discountType: {
+      type: String,
+      enum: ["percentage", "fixed"],
+      default: "fixed",
+    },
     discountReason: String,
     total: {
       type: Number,
@@ -174,7 +179,9 @@ TransactionSchema.pre("save", async function (next) {
       }
 
       // Format the new invoice number (YYYYMMDD0001)
-      this.invoiceNumber = `${dateStr}${sequentialNumber.toString().padStart(4, "0")}`;
+      this.invoiceNumber = `${dateStr}${sequentialNumber
+        .toString()
+        .padStart(4, "0")}`;
       next();
     } catch (error) {
       next(error);

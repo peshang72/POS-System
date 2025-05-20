@@ -1,5 +1,13 @@
-import { X, Printer, CheckCircle2, AlertCircle } from "lucide-react";
+import {
+  X,
+  Printer,
+  CheckCircle2,
+  AlertCircle,
+  DollarSign,
+  Wallet,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useState, useEffect } from "react";
 
 const ReceiptPreview = ({
   isOpen,
@@ -20,8 +28,48 @@ const ReceiptPreview = ({
   isSaving = false,
 }) => {
   const { t } = useTranslation();
+  const [amountTendered, setAmountTendered] = useState("");
+  const [changeAmount, setChangeAmount] = useState(0);
 
-  if (!isOpen || !transaction) return null;
+  // Reset the cash payment fields when the transaction changes
+  useEffect(() => {
+    if (transaction) {
+      // Set default amountTendered to the total amount
+      setAmountTendered(total.toString());
+      setChangeAmount(0);
+    }
+  }, [transaction, total]);
+
+  // Calculate change when amount tendered changes
+  useEffect(() => {
+    console.log(
+      "amountTendered changed:",
+      amountTendered,
+      typeof amountTendered
+    );
+    if (amountTendered && !isNaN(amountTendered)) {
+      const tendered = parseFloat(amountTendered);
+      if (tendered >= total) {
+        setChangeAmount(tendered - total);
+      } else {
+        setChangeAmount(0);
+      }
+    } else {
+      setChangeAmount(0);
+    }
+  }, [amountTendered, total]);
+
+  if (!isOpen || !transaction) {
+    console.log(
+      "ReceiptPreview not rendering. isOpen:",
+      isOpen,
+      "transaction:",
+      transaction
+    );
+    return null;
+  }
+
+  console.log("ReceiptPreview rendering with transaction:", transaction);
 
   // Format date for receipt
   const formatDate = (date) => {
@@ -48,6 +96,25 @@ const ReceiptPreview = ({
     if (customer.firstName) return customer.firstName;
     if (customer.lastName) return customer.lastName;
     return t("pos.unknownCustomer", "Unknown Customer");
+  };
+
+  // Handle confirming the sale with payment details
+  const handleConfirmSale = () => {
+    console.log("Confirm Sale button clicked");
+    // Add payment details to the transaction
+    const paymentDetails = {
+      amountTendered: parseFloat(amountTendered),
+      change: changeAmount,
+    };
+    console.log("Payment details prepared:", paymentDetails);
+
+    if (typeof onConfirm !== "function") {
+      console.error("onConfirm is not a function", onConfirm);
+      return;
+    }
+
+    console.log("Calling onConfirm function");
+    onConfirm(paymentDetails);
   };
 
   return (
@@ -207,6 +274,98 @@ const ReceiptPreview = ({
             <span>{formatPrice(total)}</span>
           </div>
 
+          {/* Cash payment section */}
+          {isPending && (
+            <div className="mt-4 pt-4 border-t border-gray-300">
+              <h3 className="font-medium text-gray-800 mb-2 flex items-center gap-2">
+                <Wallet size={18} />
+                {t("pos.paymentMethod", "Payment Method")}
+              </h3>
+
+              <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <DollarSign size={18} className="text-green-600" />
+                  <span className="font-medium">
+                    {t("pos.paymentMethod.cash", "Cash")}
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  <div>
+                    <label className="text-sm text-gray-600 block mb-1">
+                      {t("pos.amountTendered", "Amount Tendered")}
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                        {currency === "USD" ? "$" : "IQD"}
+                      </span>
+                      <input
+                        type="number"
+                        className="input w-full pl-8 bg-white border border-gray-300"
+                        value={amountTendered}
+                        onChange={(e) => {
+                          console.log("Input changed:", e.target.value);
+                          setAmountTendered(e.target.value);
+                        }}
+                        min={total}
+                        step="0.01"
+                        placeholder={formatPrice(total).replace(/[^0-9.]/g, "")}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-sm text-gray-600 block mb-1">
+                      {t("pos.change", "Change")}
+                    </label>
+                    <div className="p-2 bg-gray-200 rounded text-right font-medium">
+                      {formatPrice(changeAmount)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Payment details if not pending */}
+          {!isPending && transaction.paymentDetails && (
+            <div className="mt-4 pt-4 border-t border-gray-300">
+              <h3 className="font-medium text-gray-800 mb-2">
+                {t("pos.paymentDetails", "Payment Details")}
+              </h3>
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">
+                    {t("pos.paymentMethod", "Payment Method")}:
+                  </span>
+                  <span className="font-medium">
+                    {t("pos.paymentMethod.cash", "Cash")}
+                  </span>
+                </div>
+                {transaction.paymentDetails.amountTendered && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">
+                      {t("pos.amountTendered", "Amount Tendered")}:
+                    </span>
+                    <span>
+                      {formatPrice(transaction.paymentDetails.amountTendered)}
+                    </span>
+                  </div>
+                )}
+                {transaction.paymentDetails.change && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">
+                      {t("pos.change", "Change")}:
+                    </span>
+                    <span>
+                      {formatPrice(transaction.paymentDetails.change)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Loyalty points earned section */}
           {transaction.loyaltyPointsAwarded > 0 && customer && (
             <div className="mt-3 pt-3 border-t border-gray-300">
@@ -266,8 +425,22 @@ const ReceiptPreview = ({
               </button>
               <button
                 className="btn btn-success flex-1 flex items-center justify-center gap-2"
-                onClick={onConfirm}
-                disabled={isSaving}
+                onClick={() => {
+                  console.log("Confirm sale clicked with values:", {
+                    amountTendered,
+                    total,
+                    isDisabled:
+                      isSaving ||
+                      !amountTendered ||
+                      parseFloat(amountTendered) < total,
+                  });
+                  handleConfirmSale();
+                }}
+                disabled={
+                  isSaving ||
+                  !amountTendered ||
+                  parseFloat(amountTendered) < total
+                }
               >
                 {isSaving ? (
                   <span className="loading loading-spinner"></span>

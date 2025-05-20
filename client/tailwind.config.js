@@ -26,6 +26,20 @@ export default {
         "neon-error": "0 0 5px theme(colors.error)",
         "neon-info": "0 0 5px theme(colors.info)",
       },
+      animation: {
+        "slide-up": "slideUp 0.3s ease-out forwards",
+        "fade-in": "fadeIn 0.2s ease-out forwards",
+      },
+      keyframes: {
+        slideUp: {
+          "0%": { transform: "translateY(20px)", opacity: "0" },
+          "100%": { transform: "translateY(0)", opacity: "1" },
+        },
+        fadeIn: {
+          "0%": { opacity: "0", transform: "translateY(-5px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+      },
     },
   },
   plugins: [],

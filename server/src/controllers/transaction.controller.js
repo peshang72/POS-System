@@ -136,7 +136,7 @@ exports.createTransaction = asyncHandler(async (req, res) => {
             {
               product: item.product,
               type: "sale",
-              quantity: -item.quantity, // Negative for sales
+              quantity: item.quantity, // Use positive quantity - model will subtract it
               remainingQuantity: 0, // Will be calculated in the model
               reference: {
                 type: "transaction",

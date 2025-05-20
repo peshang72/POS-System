@@ -94,30 +94,6 @@ exports.register = async (req, res, next) => {
 exports.login = asyncHandler(async (req, res, next) => {
   const { username, password } = req.body;
 
-  // Check if running in Electron offline mode
-  if (isElectron) {
-    // For Electron, provide a default admin user without database
-    console.log("Electron environment: Providing default admin authentication");
-    const token = jwt.sign(
-      { id: "electron-admin-id", role: "admin" },
-      config.jwtSecret,
-      { expiresIn: config.jwtExpire }
-    );
-
-    return res.status(200).json({
-      success: true,
-      token,
-      data: {
-        id: "electron-admin-id",
-        name: "Admin User",
-        username: "admin",
-        role: "admin",
-        languagePreference: "en",
-      },
-    });
-  }
-
-  // For standard web app, continue with normal MongoDB authentication
   // Validate input data
   if (!username || !password) {
     return res.status(400).json({
@@ -126,65 +102,80 @@ exports.login = asyncHandler(async (req, res, next) => {
     });
   }
 
-  // Check for user
-  const user = await User.findOne({ username }).select("+password");
-  if (!user) {
-    return res.status(401).json({
-      success: false,
-      message: "Invalid credentials",
-    });
-  }
-
-  // Check if account is active
-  if (!user.active) {
-    return res.status(401).json({
-      success: false,
-      message:
-        "Your account has been deactivated. Please contact an administrator",
-    });
-  }
-
-  // Check if password matches
-  const isMatch = await user.matchPassword(password);
-  if (!isMatch) {
-    return res.status(401).json({
-      success: false,
-      message: "Invalid credentials",
-    });
-  }
-
-  // Generate token
-  const token = user.getSignedJwtToken();
-
-  // Log activity
   try {
-    await StaffActivity.create({
-      staff: user._id,
-      actionType: "login",
-      details: {
+    // Log authentication attempts in Electron mode
+    if (isElectron) {
+      logger.info(`Electron login attempt with username: ${username}`);
+    }
+
+    // Standard implementation for both Electron and server modes
+    const user = await User.findOne({ username }).select("+password");
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials",
+      });
+    }
+
+    // Check if account is active
+    if (!user.active) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "Your account has been deactivated. Please contact an administrator",
+      });
+    }
+
+    // Check if password matches
+    const isMatch = await user.matchPassword(password);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials",
+      });
+    }
+
+    // Generate token
+    const token = user.getSignedJwtToken();
+
+    // Log activity
+    try {
+      await StaffActivity.create({
+        staff: user._id,
+        actionType: "login",
+        details: {
+          username: user.username,
+          role: user.role,
+        },
+      });
+    } catch (err) {
+      logger.error(`Error logging staff activity: ${err.message}`);
+      // Continue with login process even if activity logging fails
+    }
+
+    logger.info(`Login successful for user: ${username}`);
+
+    res.status(200).json({
+      success: true,
+      token,
+      data: {
+        _id: user._id,
         username: user.username,
         role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phone: user.phone,
+        languagePreference: user.languagePreference,
       },
     });
   } catch (err) {
-    logger.error(`Error logging staff activity: ${err.message}`);
-    // Continue with login process even if activity logging fails
+    logger.error(`Login error: ${err.message}`);
+    return res.status(500).json({
+      success: false,
+      message: `Authentication error: ${err.message}`,
+    });
   }
-
-  res.status(200).json({
-    success: true,
-    token,
-    data: {
-      _id: user._id,
-      username: user.username,
-      role: user.role,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      phone: user.phone,
-      languagePreference: user.languagePreference,
-    },
-  });
 });
 
 // @desc    Logout user
@@ -219,6 +210,7 @@ exports.logout = async (req, res, next) => {
 // @access  Private
 exports.getMe = async (req, res, next) => {
   try {
+    // Standard MongoDB implementation
     const user = await User.findById(req.user._id);
 
     res.status(200).json({

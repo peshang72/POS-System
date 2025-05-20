@@ -15,20 +15,6 @@ const opts = {
 passport.use(
   new JwtStrategy(opts, async (jwt_payload, done) => {
     try {
-      // In Electron mode, accept any valid JWT for offline usage
-      if (isElectron) {
-        // Accept any JWT that has the expected fields
-        if (jwt_payload && jwt_payload.id) {
-          return done(null, {
-            _id: jwt_payload.id,
-            role: jwt_payload.role || "admin",
-            // Add default user properties for the desktop version
-            isDesktopUser: true,
-          });
-        }
-        return done(null, false);
-      }
-
       // Standard validation with database lookup
       const user = await User.findById(jwt_payload.id).select("-password");
 
@@ -54,11 +40,6 @@ exports.authorize = (...roles) => {
         success: false,
         message: "Not authorized to access this route",
       });
-    }
-
-    if (isElectron) {
-      // In Electron mode, automatically authorize for simplicity
-      return next();
     }
 
     if (!roles.includes(req.user.role)) {
