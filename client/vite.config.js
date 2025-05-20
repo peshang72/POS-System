@@ -87,7 +87,7 @@ export default defineConfig({
       },
     },
     rollupOptions: {
-      external: ["clsx", "tailwind-merge", "i18next-http-backend"],
+      external: ["clsx", "tailwind-merge"],
       output: {
         manualChunks: {
           vendor: ["react", "react-dom", "react-router-dom"],
@@ -97,7 +97,7 @@ export default defineConfig({
             "chart.js",
             "react-chartjs-2",
           ],
-          i18n: ["i18next", "react-i18next"],
+          i18n: ["i18next", "react-i18next", "i18next-http-backend"],
           data: ["axios", "@tanstack/react-query"],
         },
         format: "es",
