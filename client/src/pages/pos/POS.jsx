@@ -25,6 +25,7 @@ import {
 import { useProducts } from "../../hooks/useProducts";
 import { useCategories } from "../../hooks/useCategories";
 import { useCustomers } from "../../hooks/useCustomers";
+import { useExchangeRate } from "../../hooks/useExchangeRate";
 import CustomerSelectionModal from "../../components/pos/CustomerSelectionModal";
 import ReceiptPreview from "../../components/pos/ReceiptPreview";
 import LoyaltyPointsRedemption from "../../components/pos/LoyaltyPointsRedemption";
@@ -78,8 +79,6 @@ const POS = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currency, setCurrency] = useState("USD"); // USD or IQD
-  const [exchangeRate, setExchangeRate] = useState(1450); // Default: 1 USD = 1450 IQD
-  const [showExchangeSettings, setShowExchangeSettings] = useState(false);
 
   // Customer and transaction state
   const [showCustomerModal, setShowCustomerModal] = useState(false);
@@ -91,6 +90,9 @@ const POS = () => {
 
   // Notification state
   const [notification, setNotification] = useState(null);
+
+  // Exchange rate from settings
+  const { exchangeRate } = useExchangeRate();
 
   // Customer hook
   const {
@@ -588,67 +590,9 @@ const POS = () => {
                   >
                     <span>IQD</span>
                   </button>
-                  <button
-                    className={`p-2 flex items-center justify-center transition-colors ${
-                      showExchangeSettings
-                        ? "bg-accent text-white"
-                        : "bg-gray-800 hover:bg-gray-700 text-gray-300"
-                    }`}
-                    onClick={() =>
-                      setShowExchangeSettings(!showExchangeSettings)
-                    }
-                    title="Exchange Rate Settings"
-                  >
-                    <Settings size={16} />
-                  </button>
                 </div>
               </div>
             </div>
-
-            {/* Exchange Rate Settings */}
-            {showExchangeSettings && (
-              <div className="p-3 bg-gray-800 rounded-md shadow-lg border border-gray-700 animate-fade-in">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium text-gray-300">
-                    Exchange Rate Settings
-                  </h3>
-                  <button
-                    className="p-1 rounded-full hover:bg-gray-700 text-gray-400 hover:text-gray-200 transition-colors"
-                    onClick={() => setShowExchangeSettings(false)}
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center bg-accent bg-opacity-20 px-3 py-1.5 rounded-md">
-                    <DollarSign size={14} className="text-accent mr-1" />
-                    <span className="text-sm font-medium">1 USD</span>
-                  </div>
-                  <span className="text-gray-400">=</span>
-                  <div className="flex items-center flex-1">
-                    <input
-                      type="number"
-                      min="1"
-                      value={exchangeRate}
-                      onChange={(e) =>
-                        setExchangeRate(Math.max(1, Number(e.target.value)))
-                      }
-                      className="bg-gray-900 px-3 py-1.5 rounded-l-md w-full focus:outline-none focus:ring-1 focus:ring-accent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    />
-                    <div className="bg-gray-700 px-3 py-1.5 rounded-r-md text-gray-300 text-sm font-medium">
-                      IQD
-                    </div>
-                  </div>
-                  <button
-                    className="p-2 rounded-md bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white transition-colors"
-                    onClick={() => setExchangeRate(1450)} // Reset to default
-                    title="Reset to default"
-                  >
-                    <RefreshCw size={14} />
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Categories */}

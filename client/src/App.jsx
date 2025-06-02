@@ -21,6 +21,7 @@ import Customers from "./pages/customers/Customers";
 import Staff from "./pages/staff/Staff";
 import Reports from "./pages/reports/Reports";
 import Settings from "./pages/settings/Settings";
+import GeneralSettings from "./pages/settings/GeneralSettings";
 import LoyaltySettings from "./pages/settings/LoyaltySettings";
 import NotFound from "./pages/NotFound";
 
@@ -122,6 +123,12 @@ function App() {
           <Route
             path="/settings"
             element={isAuthenticated ? <Settings /> : <Navigate to="/login" />}
+          />
+          <Route
+            path="/settings/general"
+            element={
+              isAuthenticated ? <GeneralSettings /> : <Navigate to="/login" />
+            }
           />
           <Route
             path="/settings/loyalty"

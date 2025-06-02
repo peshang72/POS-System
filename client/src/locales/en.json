@@ -124,6 +124,13 @@
     "noProductsFound": "No products found",
     "units": "units"
   },
+  "store": {
+    "name": "Lîstik Store",
+    "address": "40m Kshtukal, Erbil",
+    "phone": "Tel: 0750 123 4567",
+    "email": "info@listik.com",
+    "website": "www.listik.com"
+  },
   "customers": {
     "customers": "Customers",
     "addCustomer": "Add Customer",
@@ -323,6 +330,31 @@
     }
   },
   "settings": {
+    "general": {
+      "title": "General Settings",
+      "description": "Store information, language, and regional settings",
+      "currencyExchange": "Currency Exchange Rate",
+      "usdToIqdRate": "USD to IQD Exchange Rate",
+      "currentRate": "Current Rate",
+      "personal": "Personal",
+      "global": "Global",
+      "exchangeRateHelp": "This rate will be used for currency conversion in the POS system",
+      "adminWarning": "As an admin, you can apply this exchange rate to all users, overriding their individual settings.",
+      "applyToAllUsers": "Apply this rate to all users",
+      "applyToAllUsersHelp": "This will override individual exchange rate settings for all cashiers and managers",
+      "permissionInfo": "Permission Information",
+      "cashierPermission": "Cashiers: Can set their own exchange rate",
+      "managerPermission": "Managers: Can set their own exchange rate",
+      "adminPermission": "Admins: Can set their own rate or apply to all users",
+      "storeInfo": "Store Information",
+      "storeName": "Store Name",
+      "storeNameHelp": "Store name configuration coming soon",
+      "defaultLanguage": "Default Language",
+      "languageHelp": "Language settings configuration coming soon",
+      "fetchError": "Failed to load general settings",
+      "saveSuccess": "Settings saved successfully",
+      "saveError": "Failed to save settings"
+    },
     "loyalty": {
       "title": "Loyalty Program Settings",
       "basicSettings": "Basic Settings",
