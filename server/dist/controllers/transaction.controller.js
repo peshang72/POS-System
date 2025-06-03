@@ -55,7 +55,7 @@ exports.getTransactions = asyncHandler(async (req, res) => {
     sort: { transactionDate: -1 },
     populate: [
       { path: "customer", select: "firstName lastName phone" },
-      { path: "cashier", select: "firstName lastName username" },
+      { path: "cashier", select: "name" },
     ],
   };
 
@@ -85,21 +85,9 @@ exports.getTransactions = asyncHandler(async (req, res) => {
  * @route GET /api/transactions/:id
  */
 exports.getTransaction = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  let transaction;
-
-  // Check if the id is a valid MongoDB ObjectId
-  if (mongoose.Types.ObjectId.isValid(id) && id.length === 24) {
-    // Search by ObjectId
-    transaction = await Transaction.findById(id)
-      .populate("customer")
-      .populate("cashier", "firstName lastName username");
-  } else {
-    // Search by invoice number
-    transaction = await Transaction.findOne({ invoiceNumber: id })
-      .populate("customer")
-      .populate("cashier", "firstName lastName username");
-  }
+  const transaction = await Transaction.findById(req.params.id)
+    .populate("customer")
+    .populate("cashier", "name");
 
   if (!transaction) {
     return res.status(404).json({
@@ -123,13 +111,8 @@ exports.updateTransaction = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const updateData = req.body;
 
-  // Find the transaction by ObjectId or invoice number
-  let transaction;
-  if (mongoose.Types.ObjectId.isValid(id) && id.length === 24) {
-    transaction = await Transaction.findById(id);
-  } else {
-    transaction = await Transaction.findOne({ invoiceNumber: id });
-  }
+  // Find the transaction
+  let transaction = await Transaction.findById(id);
 
   if (!transaction) {
     return res.status(404).json({
@@ -152,14 +135,14 @@ exports.updateTransaction = asyncHandler(async (req, res) => {
     }
   });
 
-  // Update the transaction using the actual ObjectId
+  // Update the transaction
   transaction = await Transaction.findByIdAndUpdate(
-    transaction._id,
+    id,
     { ...updateData, updatedBy: req.user._id },
     { new: true, runValidators: true }
   )
     .populate("customer")
-    .populate("cashier", "firstName lastName username");
+    .populate("cashier", "name");
 
   res.status(200).json({
     success: true,
@@ -175,13 +158,7 @@ exports.updateTransaction = asyncHandler(async (req, res) => {
 exports.deleteTransaction = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  // Find the transaction by ObjectId or invoice number
-  let transaction;
-  if (mongoose.Types.ObjectId.isValid(id) && id.length === 24) {
-    transaction = await Transaction.findById(id);
-  } else {
-    transaction = await Transaction.findOne({ invoiceNumber: id });
-  }
+  const transaction = await Transaction.findById(id);
 
   if (!transaction) {
     return res.status(404).json({
@@ -230,8 +207,8 @@ exports.deleteTransaction = asyncHandler(async (req, res) => {
       }
     }
 
-    // Remove the transaction using the actual ObjectId
-    await Transaction.findByIdAndDelete(transaction._id).session(session);
+    // Remove the transaction
+    await Transaction.findByIdAndDelete(id).session(session);
 
     // Optionally, you might want to reverse inventory changes here
     // This depends on your business logic requirements
