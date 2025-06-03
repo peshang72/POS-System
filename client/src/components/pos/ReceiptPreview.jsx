@@ -98,6 +98,21 @@ const ReceiptPreview = ({
     return t("pos.unknownCustomer", "Unknown Customer");
   };
 
+  // Helper function to generate preview invoice number
+  const getInvoiceNumber = () => {
+    if (!isPending && transaction._id) {
+      // For completed transactions, use the actual invoice number or fallback to ID
+      return transaction.invoiceNumber || transaction._id.substring(0, 8);
+    } else if (transaction.invoiceNumber) {
+      // For pending transactions, use the temporary invoice number if available
+      return transaction.invoiceNumber;
+    } else {
+      // Fallback: generate a preview invoice number based on current date
+      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      return `${dateStr}XXXX`;
+    }
+  };
+
   // Handle confirming the sale with payment details
   const handleConfirmSale = () => {
     console.log("Confirm Sale button clicked");
@@ -182,9 +197,12 @@ const ReceiptPreview = ({
                 {t("pos.receiptNumber", "Receipt #")}:
               </span>
               <span>
-                {isPending
-                  ? t("pos.pending", "Pending")
-                  : transaction._id?.substring(0, 8) || "N/A"}
+                {getInvoiceNumber()}
+                {isPending && (
+                  <span className="text-xs text-amber-600 ml-2">
+                    ({t("pos.preview", "Preview")})
+                  </span>
+                )}
               </span>
             </div>
             <div className="flex justify-between">
