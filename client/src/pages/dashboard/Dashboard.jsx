@@ -322,36 +322,39 @@ const Dashboard = () => {
             </div>
           ) : (
             dashboardData.recentTransactions.map((transaction) => (
-              <div
+              <Link
                 key={transaction.id}
-                className="flex justify-between items-center p-3 rounded-lg bg-gray-800 bg-opacity-50 hover:bg-opacity-70 transition-colors"
+                to={`/transactions/${transaction.id}`}
+                className="block"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-accent bg-opacity-20 flex items-center justify-center">
-                    <ShoppingCart size={18} className="text-accent" />
+                <div className="flex justify-between items-center p-3 rounded-lg bg-gray-800 bg-opacity-50 hover:bg-opacity-70 transition-all duration-200 cursor-pointer hover:scale-[1.02] hover:shadow-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-accent bg-opacity-20 flex items-center justify-center">
+                      <ShoppingCart size={18} className="text-accent" />
+                    </div>
+                    <div>
+                      <p className="font-medium">Order #{transaction.id}</p>
+                      <p className="text-sm text-gray-400">
+                        {new Date(transaction.date).toLocaleDateString()}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium">Order #{transaction.id}</p>
-                    <p className="text-sm text-gray-400">
-                      {new Date(transaction.date).toLocaleDateString()}
+                  <div className="text-right">
+                    <p className="font-medium">${transaction.amount}</p>
+                    <p
+                      className={`text-xs px-2 py-1 rounded-full ${
+                        transaction.status === "Completed"
+                          ? "bg-success bg-opacity-20 text-success"
+                          : transaction.status === "Pending"
+                          ? "bg-warning bg-opacity-20 text-warning"
+                          : "bg-error bg-opacity-20 text-error"
+                      } inline-block`}
+                    >
+                      {transaction.status}
                     </p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-medium">${transaction.amount}</p>
-                  <p
-                    className={`text-xs px-2 py-1 rounded-full ${
-                      transaction.status === "Completed"
-                        ? "bg-success bg-opacity-20 text-success"
-                        : transaction.status === "Pending"
-                        ? "bg-warning bg-opacity-20 text-warning"
-                        : "bg-error bg-opacity-20 text-error"
-                    } inline-block`}
-                  >
-                    {transaction.status}
-                  </p>
-                </div>
-              </div>
+              </Link>
             ))
           )}
         </div>

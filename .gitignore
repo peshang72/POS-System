@@ -44,9 +44,6 @@ Thumbs.db
 # MongoDB data
 /data/db/
 
-# Vercel deployment
-.vercel
-
 # Testing
 /coverage
 

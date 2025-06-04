@@ -198,7 +198,6 @@ TransactionSchema.pre("save", async function (next) {
 
     for (let i = 0; i < this.items.length; i++) {
       const item = this.items[i];
-
       if (!item.productSnapshot || !item.productSnapshot.name) {
         const product = await Product.findById(item.product);
         if (product) {

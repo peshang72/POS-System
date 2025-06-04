@@ -130,8 +130,8 @@ exports.getDashboardData = async (req, res) => {
     const recentTransactions = await Transaction.find()
       .sort({ transactionDate: -1 })
       .limit(5)
-      .populate("customer", "firstName lastName")
-      .populate("cashier", "firstName lastName username");
+      .populate("customer", "name")
+      .populate("cashier", "name");
 
     // Format data for the frontend
     const dashboardData = {
@@ -149,12 +149,8 @@ exports.getDashboardData = async (req, res) => {
       usersPercent,
       recentTransactions: recentTransactions.map((transaction) => ({
         id: transaction.invoiceNumber,
-        customer: transaction.customer
-          ? `${transaction.customer.firstName} ${transaction.customer.lastName}`
-          : "Guest",
-        cashier: transaction.cashier
-          ? `${transaction.cashier.firstName} ${transaction.cashier.lastName}`
-          : "Unknown",
+        customer: transaction.customer ? transaction.customer.name : "Guest",
+        cashier: transaction.cashier ? transaction.cashier.name : "Unknown",
         amount: transaction.total.toFixed(2),
         date: transaction.transactionDate,
         status:

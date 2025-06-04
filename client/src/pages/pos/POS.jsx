@@ -311,42 +311,44 @@ const POS = () => {
     setShowLoyaltyRedemption(false);
   };
 
-  // Updated prepareTransactionData to include loyalty redemption
+  // Updated prepareTransactionData to include loyalty redemption and productSnapshot
   const prepareTransactionData = () => {
     if (cart.length === 0) return null;
 
-    // Calculate values
+    // Calculate totals
     const subtotal = cart.reduce(
       (sum, item) => sum + item.price * item.quantity,
       0
     );
 
-    // Calculate discount
+    // Calculate discount amount
     let calculatedDiscount = 0;
     if (discountType === "percent") {
-      calculatedDiscount = subtotal * (discountPercent / 100);
+      calculatedDiscount = (subtotal * discountPercent) / 100;
     } else {
       calculatedDiscount = discountAmount;
     }
 
-    // Add loyalty discount if applicable
-    const totalDiscount = calculatedDiscount + loyaltyDiscount;
-    const finalTotal = Math.max(0, subtotal - totalDiscount);
+    // Calculate final total
+    const finalTotal = subtotal - calculatedDiscount - loyaltyDiscount;
+
+    // Map discount type to backend format
+    const mappedDiscountType =
+      discountType === "percent" ? "percentage" : "fixed";
 
     // Generate a temporary invoice number (server will replace this)
     const tempInvoiceNumber = `INV-${Date.now()}`;
-
-    // Map frontend discount type to backend accepted values
-    const mappedDiscountType =
-      discountType === "percent" ? "percentage" : "fixed";
 
     return {
       // Don't set _id - MongoDB will generate this
       customer: selectedCustomer?._id, // May be null for guest transactions
       items: cart.map((item) => ({
         product: item._id,
-        name: item.name.en,
-        price: item.price,
+        productSnapshot: {
+          name: item.name,
+          sku: item.sku,
+          price: item.price,
+        },
         quantity: item.quantity,
         unitPrice: item.price, // Add required unitPrice field
         subtotal: item.price * item.quantity, // Add required subtotal field
