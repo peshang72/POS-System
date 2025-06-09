@@ -94,7 +94,7 @@
     "unknownCustomer": "Unknown Customer",
     "pending": "Pending",
     "qty": "Qty",
-    "paymentMethod": {
+    "paymentMethods": {
       "cash": "Cash"
     },
     "loyalty": {
@@ -324,6 +324,7 @@
       "last30days": "Last 30 Days",
       "thisMonth": "This Month",
       "lastMonth": "Last Month",
+      "allTime": "All Time",
       "custom": "Custom Range",
       "presets": "Presets"
     },

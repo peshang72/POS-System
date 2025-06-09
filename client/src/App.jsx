@@ -23,6 +23,7 @@ import Reports from "./pages/reports/Reports";
 import Settings from "./pages/settings/Settings";
 import GeneralSettings from "./pages/settings/GeneralSettings";
 import LoyaltySettings from "./pages/settings/LoyaltySettings";
+import Transactions from "./pages/transactions/Transactions";
 import TransactionDetail from "./pages/transactions/TransactionDetail";
 import NotFound from "./pages/NotFound";
 
@@ -120,6 +121,12 @@ function App() {
           <Route
             path="/reports"
             element={isAuthenticated ? <Reports /> : <Navigate to="/login" />}
+          />
+          <Route
+            path="/transactions"
+            element={
+              isAuthenticated ? <Transactions /> : <Navigate to="/login" />
+            }
           />
           <Route
             path="/settings"

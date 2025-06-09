@@ -76,7 +76,10 @@
     "consoles": "کۆنسۆڵەکان",
     "accessories": "پێداویستییەکان",
     "monitors": "مۆنیتەرەکان",
-    "components": "پێکهاتەکان"
+    "components": "پێکهاتەکان",
+    "paymentMethods": {
+      "cash": "نەقد"
+    }
   },
   "products": {
     "products": "بەرهەمەکان",
@@ -330,6 +333,7 @@
       "last30days": "٣٠ ڕۆژی ڕابردوو",
       "thisMonth": "ئەم مانگە",
       "lastMonth": "مانگی پێشوو",
+      "allTime": "هەموو کاتەکان",
       "custom": "ماوەی دیاریکراو",
       "presets": "پێشوەختەکان"
     },

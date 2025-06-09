@@ -7,7 +7,8 @@
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "mkdir -p dist && cp -r src/* dist/ && cp package.json dist/"
+    "build": "mkdir -p dist && cp -r src/* dist/ && cp package.json dist/",
+    "migrate:costs": "node scripts/migrate-transaction-costs.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

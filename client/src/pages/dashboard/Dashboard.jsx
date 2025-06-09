@@ -307,7 +307,7 @@ const Dashboard = () => {
             </h2>
           </div>
           <Link
-            to="/reports"
+            to="/transactions"
             className="text-sm text-accent hover:underline flex items-center gap-1"
           >
             {t("dashboard.viewAll")}

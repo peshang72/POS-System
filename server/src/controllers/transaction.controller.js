@@ -291,6 +291,30 @@ exports.createTransaction = asyncHandler(async (req, res) => {
   session.startTransaction();
 
   try {
+    console.log(
+      "Creating transaction with data:",
+      JSON.stringify(req.body, null, 2)
+    );
+
+    // Validate required fields
+    if (!req.body.items || req.body.items.length === 0) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({
+        success: false,
+        error: "Transaction must have at least one item",
+      });
+    }
+
+    if (!req.body.total || req.body.total <= 0) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({
+        success: false,
+        error: "Transaction total must be greater than 0",
+      });
+    }
+
     // Create transaction
     let transaction = await Transaction.create(
       [
@@ -303,6 +327,7 @@ exports.createTransaction = asyncHandler(async (req, res) => {
     );
 
     transaction = transaction[0]; // Unwrap from array
+    console.log("Transaction created successfully:", transaction._id);
 
     // Update product quantities and create inventory records
     if (transaction.items && transaction.items.length > 0) {
@@ -330,19 +355,27 @@ exports.createTransaction = asyncHandler(async (req, res) => {
       }
     }
 
+    // Declare customer variable outside the loyalty points section
+    let customer = null;
+
     // Handle loyalty points if customer is provided
     if (transaction.customer) {
+      console.log(
+        "Processing loyalty points for customer:",
+        transaction.customer
+      );
+
       // Get category IDs for loyalty calculation
       const categories = transaction.items
         .filter((item) => item.product)
         .map((item) => item.product.category);
 
       // Calculate points to award
-      const customer = await Customer.findById(transaction.customer).session(
-        session
-      );
+      customer = await Customer.findById(transaction.customer).session(session);
 
       if (customer) {
+        console.log("Customer found:", customer.firstName, customer.lastName);
+
         // Calculate points based on total amount
         const pointsToAward = await loyaltyService.calculatePointsForPurchase(
           transaction.total,
@@ -351,6 +384,8 @@ exports.createTransaction = asyncHandler(async (req, res) => {
             categories: Array.from(new Set(categories.filter((c) => c))), // Unique, non-null categories
           }
         );
+
+        console.log("Points to award:", pointsToAward);
 
         // If points should be awarded
         if (pointsToAward > 0) {
@@ -387,11 +422,15 @@ exports.createTransaction = asyncHandler(async (req, res) => {
           customer.lastPurchase = new Date();
           await customer.save({ session });
         }
+      } else {
+        console.log("Customer not found for ID:", transaction.customer);
       }
     }
 
     // Process loyalty redemption if included
     if (req.body.loyaltyDiscount && req.body.loyaltyDiscount > 0 && customer) {
+      console.log("Processing loyalty redemption:", req.body.loyaltyDiscount);
+
       // Get redemption rate to calculate points
       const loyaltySettings = await LoyaltySettings.findOne();
       const redemptionRate = loyaltySettings?.redemptionRate || 0.01;
@@ -422,6 +461,8 @@ exports.createTransaction = asyncHandler(async (req, res) => {
     await session.commitTransaction();
     session.endSession();
 
+    console.log("Transaction completed successfully");
+
     res.status(201).json({
       success: true,
       data: transaction,
@@ -431,10 +472,13 @@ exports.createTransaction = asyncHandler(async (req, res) => {
     session.endSession();
 
     console.error("Error creating transaction:", error);
+    console.error("Error stack:", error.stack);
+
     res.status(500).json({
       success: false,
       error: "Server Error",
       message: error.message,
+      details: process.env.NODE_ENV === "development" ? error.stack : undefined,
     });
   }
 });

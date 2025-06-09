@@ -31,6 +31,7 @@ const TransactionSchema = new mongoose.Schema(
           },
           sku: String,
           price: Number,
+          cost: Number,
         },
         quantity: {
           type: Number,
@@ -205,6 +206,7 @@ TransactionSchema.pre("save", async function (next) {
             name: product.name,
             sku: product.sku,
             price: product.price,
+            cost: product.cost,
           };
         }
       }

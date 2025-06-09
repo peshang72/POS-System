@@ -47,12 +47,25 @@ exports.getSalesReport = async (req, res) => {
           _id: null,
           totalSales: { $sum: "$total" },
           totalTransactions: { $sum: 1 },
-          // Calculate approximate profit (this would need to be refined based on actual cost data)
+          // Calculate actual profit based on cost data
           grossProfit: {
             $sum: {
-              $multiply: [
-                "$total",
-                0.3, // Assuming 30% profit margin - this should be refined
+              $subtract: [
+                { $subtract: ["$subtotal", "$discountAmount"] },
+                {
+                  $sum: {
+                    $map: {
+                      input: "$items",
+                      as: "item",
+                      in: {
+                        $multiply: [
+                          { $ifNull: ["$$item.productSnapshot.cost", 0] },
+                          "$$item.quantity",
+                        ],
+                      },
+                    },
+                  },
+                },
               ],
             },
           },
@@ -105,6 +118,14 @@ exports.getSalesReport = async (req, res) => {
           sku: { $first: "$items.productSnapshot.sku" },
           quantity: { $sum: "$items.quantity" },
           revenue: { $sum: "$items.subtotal" },
+          totalCost: {
+            $sum: {
+              $multiply: [
+                { $ifNull: ["$items.productSnapshot.cost", 0] },
+                "$items.quantity",
+              ],
+            },
+          },
         },
       },
       {
@@ -115,7 +136,7 @@ exports.getSalesReport = async (req, res) => {
           sku: 1,
           quantity: 1,
           revenue: 1,
-          profit: { $multiply: ["$revenue", 0.3] }, // Approximate profit calculation
+          profit: { $subtract: ["$revenue", "$totalCost"] }, // Actual profit calculation
         },
       },
       { $sort: { revenue: -1 } },

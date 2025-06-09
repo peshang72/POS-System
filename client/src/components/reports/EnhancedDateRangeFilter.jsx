@@ -83,6 +83,16 @@ const EnhancedDateRangeFilter = ({ onFilterChange }) => {
         };
       },
     },
+    {
+      id: "allTime",
+      name: t("reports.dateRanges.allTime"),
+      getValue: () => {
+        return {
+          from: null,
+          to: null,
+        };
+      },
+    },
   ];
 
   // Initialize with the "last7days" preset
@@ -112,18 +122,26 @@ const EnhancedDateRangeFilter = ({ onFilterChange }) => {
   const handleRangeChange = (range) => {
     setSelectedRange(range);
 
-    if (range && range.from) {
-      // Set month to the selected date for calendar display
-      setMonth(range.from);
+    if (range) {
+      if (range.from === null && range.to === null) {
+        // All Time - no date restrictions
+        onFilterChange({
+          startDate: null,
+          endDate: null,
+        });
+      } else if (range.from) {
+        // Set month to the selected date for calendar display
+        setMonth(range.from);
 
-      // Convert to YYYY-MM-DD strings for API
-      const startDate = format(range.from, "yyyy-MM-dd");
-      const endDate = range.to ? format(range.to, "yyyy-MM-dd") : startDate;
+        // Convert to YYYY-MM-DD strings for API
+        const startDate = format(range.from, "yyyy-MM-dd");
+        const endDate = range.to ? format(range.to, "yyyy-MM-dd") : startDate;
 
-      onFilterChange({
-        startDate,
-        endDate,
-      });
+        onFilterChange({
+          startDate,
+          endDate,
+        });
+      }
     }
   };
 
@@ -143,15 +161,21 @@ const EnhancedDateRangeFilter = ({ onFilterChange }) => {
         <div className="flex items-center gap-2">
           <CalendarIcon className="h-4 w-4 text-accent" />
           <span>
-            {selectedRange?.from ? (
-              selectedRange.to &&
-              selectedRange.to.getTime() !== selectedRange.from.getTime() ? (
-                <>
-                  {format(selectedRange.from, "MMM dd, yyyy")} -{" "}
-                  {format(selectedRange.to, "MMM dd, yyyy")}
-                </>
+            {selectedRange ? (
+              selectedRange.from === null && selectedRange.to === null ? (
+                t("reports.dateRanges.allTime")
+              ) : selectedRange.from ? (
+                selectedRange.to &&
+                selectedRange.to.getTime() !== selectedRange.from.getTime() ? (
+                  <>
+                    {format(selectedRange.from, "MMM dd, yyyy")} -{" "}
+                    {format(selectedRange.to, "MMM dd, yyyy")}
+                  </>
+                ) : (
+                  format(selectedRange.from, "MMM dd, yyyy")
+                )
               ) : (
-                format(selectedRange.from, "MMM dd, yyyy")
+                <span>{t("reports.selectDateRange")}</span>
               )
             ) : (
               <span>{t("reports.selectDateRange")}</span>

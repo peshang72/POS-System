@@ -15,29 +15,25 @@ exports.getSalesReport = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
-    // Validate date range
-    if (!startDate || !endDate) {
-      return res.status(400).json({
-        success: false,
-        message: "Start date and end date are required",
-      });
-    }
-
-    // Parse dates and set time to beginning and end of day
-    const parsedStartDate = new Date(startDate);
-    parsedStartDate.setHours(0, 0, 0, 0);
-
-    const parsedEndDate = new Date(endDate);
-    parsedEndDate.setHours(23, 59, 59, 999);
-
     // Build match query for date range
-    const matchQuery = {
-      transactionDate: {
-        $gte: parsedStartDate,
-        $lte: parsedEndDate,
-      },
+    let matchQuery = {
       refunded: false, // Exclude refunded transactions
     };
+
+    // Add date filtering only if dates are provided (not "All Time")
+    if (startDate && endDate && startDate !== "null" && endDate !== "null") {
+      // Parse dates and set time to beginning and end of day
+      const parsedStartDate = new Date(startDate);
+      parsedStartDate.setHours(0, 0, 0, 0);
+
+      const parsedEndDate = new Date(endDate);
+      parsedEndDate.setHours(23, 59, 59, 999);
+
+      matchQuery.transactionDate = {
+        $gte: parsedStartDate,
+        $lte: parsedEndDate,
+      };
+    }
 
     // Summary: total sales, transactions, AVG order value, gross profit
     const summaryData = await Transaction.aggregate([
@@ -47,12 +43,25 @@ exports.getSalesReport = async (req, res) => {
           _id: null,
           totalSales: { $sum: "$total" },
           totalTransactions: { $sum: 1 },
-          // Calculate approximate profit (this would need to be refined based on actual cost data)
+          // Calculate actual profit based on cost data
           grossProfit: {
             $sum: {
-              $multiply: [
-                "$total",
-                0.3, // Assuming 30% profit margin - this should be refined
+              $subtract: [
+                { $subtract: ["$subtotal", "$discountAmount"] },
+                {
+                  $sum: {
+                    $map: {
+                      input: "$items",
+                      as: "item",
+                      in: {
+                        $multiply: [
+                          { $ifNull: ["$$item.productSnapshot.cost", 0] },
+                          "$$item.quantity",
+                        ],
+                      },
+                    },
+                  },
+                },
               ],
             },
           },
@@ -105,6 +114,14 @@ exports.getSalesReport = async (req, res) => {
           sku: { $first: "$items.productSnapshot.sku" },
           quantity: { $sum: "$items.quantity" },
           revenue: { $sum: "$items.subtotal" },
+          totalCost: {
+            $sum: {
+              $multiply: [
+                { $ifNull: ["$items.productSnapshot.cost", 0] },
+                "$items.quantity",
+              ],
+            },
+          },
         },
       },
       {
@@ -115,7 +132,7 @@ exports.getSalesReport = async (req, res) => {
           sku: 1,
           quantity: 1,
           revenue: 1,
-          profit: { $multiply: ["$revenue", 0.3] }, // Approximate profit calculation
+          profit: { $subtract: ["$revenue", "$totalCost"] }, // Actual profit calculation
         },
       },
       { $sort: { revenue: -1 } },
@@ -189,20 +206,18 @@ exports.getInventoryReport = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
-    // Validate date range
-    if (!startDate || !endDate) {
-      return res.status(400).json({
-        success: false,
-        message: "Start date and end date are required",
-      });
+    // Parse dates for filtering (only if provided)
+    let parsedStartDate, parsedEndDate;
+    let hasDateFilter = false;
+
+    if (startDate && endDate && startDate !== "null" && endDate !== "null") {
+      parsedStartDate = new Date(startDate);
+      parsedStartDate.setHours(0, 0, 0, 0);
+
+      parsedEndDate = new Date(endDate);
+      parsedEndDate.setHours(23, 59, 59, 999);
+      hasDateFilter = true;
     }
-
-    // Parse dates for filtering
-    const parsedStartDate = new Date(startDate);
-    parsedStartDate.setHours(0, 0, 0, 0);
-
-    const parsedEndDate = new Date(endDate);
-    parsedEndDate.setHours(23, 59, 59, 999);
 
     // Inventory Summary Statistics
     const inventorySummary = await Product.aggregate([
@@ -325,15 +340,17 @@ exports.getInventoryReport = async (req, res) => {
     ]);
 
     // Inventory Movement for the date range
-    const inventoryMovement = await Inventory.aggregate([
-      {
-        $match: {
+    const inventoryMovementMatch = hasDateFilter
+      ? {
           timestamp: {
             $gte: parsedStartDate,
             $lte: parsedEndDate,
           },
-        },
-      },
+        }
+      : {}; // No date filter for "All Time"
+
+    const inventoryMovement = await Inventory.aggregate([
+      { $match: inventoryMovementMatch },
       {
         $lookup: {
           from: "products",
@@ -446,29 +463,30 @@ exports.getStaffReport = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
-    // Validate date range
-    if (!startDate || !endDate) {
-      return res.status(400).json({
-        success: false,
-        message: "Start date and end date are required",
-      });
+    // Parse dates for filtering (only if provided)
+    let parsedStartDate, parsedEndDate;
+    let hasDateFilter = false;
+
+    if (startDate && endDate && startDate !== "null" && endDate !== "null") {
+      parsedStartDate = new Date(startDate);
+      parsedStartDate.setHours(0, 0, 0, 0);
+
+      parsedEndDate = new Date(endDate);
+      parsedEndDate.setHours(23, 59, 59, 999);
+      hasDateFilter = true;
     }
-
-    // Parse dates for filtering
-    const parsedStartDate = new Date(startDate);
-    parsedStartDate.setHours(0, 0, 0, 0);
-
-    const parsedEndDate = new Date(endDate);
-    parsedEndDate.setHours(23, 59, 59, 999);
 
     // Filter transactions by date range
     const matchQuery = {
-      transactionDate: {
-        $gte: parsedStartDate,
-        $lte: parsedEndDate,
-      },
       refunded: false,
     };
+
+    if (hasDateFilter) {
+      matchQuery.transactionDate = {
+        $gte: parsedStartDate,
+        $lte: parsedEndDate,
+      };
+    }
 
     // Staff sales performance
     const staffSales = await Transaction.aggregate([
@@ -507,15 +525,17 @@ exports.getStaffReport = async (req, res) => {
     ]);
 
     // Staff activity summary
-    const staffActivity = await StaffActivity.aggregate([
-      {
-        $match: {
+    const staffActivityMatch = hasDateFilter
+      ? {
           timestamp: {
             $gte: parsedStartDate,
             $lte: parsedEndDate,
           },
-        },
-      },
+        }
+      : {}; // No date filter for "All Time"
+
+    const staffActivity = await StaffActivity.aggregate([
+      { $match: staffActivityMatch },
       {
         $group: {
           _id: "$staff",
@@ -596,15 +616,17 @@ exports.getStaffReport = async (req, res) => {
     ]);
 
     // Daily activity timeline for all staff
-    const activityTimeline = await StaffActivity.aggregate([
-      {
-        $match: {
+    const activityTimelineMatch = hasDateFilter
+      ? {
           timestamp: {
             $gte: parsedStartDate,
             $lte: parsedEndDate,
           },
-        },
-      },
+        }
+      : {}; // No date filter for "All Time"
+
+    const activityTimeline = await StaffActivity.aggregate([
+      { $match: activityTimelineMatch },
       {
         $group: {
           _id: {
@@ -652,51 +674,54 @@ exports.getCustomerReport = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
-    // Validate date range
-    if (!startDate || !endDate) {
-      return res.status(400).json({
-        success: false,
-        message: "Start date and end date are required",
-      });
+    // Parse dates for filtering (only if provided)
+    let parsedStartDate, parsedEndDate;
+    let hasDateFilter = false;
+
+    if (startDate && endDate && startDate !== "null" && endDate !== "null") {
+      parsedStartDate = new Date(startDate);
+      parsedStartDate.setHours(0, 0, 0, 0);
+
+      parsedEndDate = new Date(endDate);
+      parsedEndDate.setHours(23, 59, 59, 999);
+      hasDateFilter = true;
     }
-
-    // Parse dates for filtering
-    const parsedStartDate = new Date(startDate);
-    parsedStartDate.setHours(0, 0, 0, 0);
-
-    const parsedEndDate = new Date(endDate);
-    parsedEndDate.setHours(23, 59, 59, 999);
 
     // Filter transactions by date range
     const matchQuery = {
-      transactionDate: {
-        $gte: parsedStartDate,
-        $lte: parsedEndDate,
-      },
       refunded: false,
       customer: { $ne: null }, // Only transactions with customer data
     };
 
+    if (hasDateFilter) {
+      matchQuery.transactionDate = {
+        $gte: parsedStartDate,
+        $lte: parsedEndDate,
+      };
+    }
+
     // Customer summary
-    const customerSummary = await Customer.aggregate([
+    const customerSummaryPipeline = [
       {
         $group: {
           _id: null,
           totalCustomers: { $sum: 1 },
-          newCustomers: {
-            $sum: {
-              $cond: [
-                {
-                  $and: [
-                    { $gte: ["$createdAt", parsedStartDate] },
-                    { $lte: ["$createdAt", parsedEndDate] },
+          newCustomers: hasDateFilter
+            ? {
+                $sum: {
+                  $cond: [
+                    {
+                      $and: [
+                        { $gte: ["$createdAt", parsedStartDate] },
+                        { $lte: ["$createdAt", parsedEndDate] },
+                      ],
+                    },
+                    1,
+                    0,
                   ],
                 },
-                1,
-                0,
-              ],
-            },
-          },
+              }
+            : { $sum: 1 }, // All customers are "new" when no date filter
         },
       },
       {
@@ -706,7 +731,9 @@ exports.getCustomerReport = async (req, res) => {
           newCustomers: 1,
         },
       },
-    ]);
+    ];
+
+    const customerSummary = await Customer.aggregate(customerSummaryPipeline);
 
     // Top customers by spending
     const topCustomers = await Transaction.aggregate([
@@ -753,15 +780,17 @@ exports.getCustomerReport = async (req, res) => {
     ]);
 
     // New customers over time
-    const newCustomersOverTime = await Customer.aggregate([
-      {
-        $match: {
+    const newCustomersOverTimeMatch = hasDateFilter
+      ? {
           createdAt: {
             $gte: parsedStartDate,
             $lte: parsedEndDate,
           },
-        },
-      },
+        }
+      : {}; // No date filter for "All Time"
+
+    const newCustomersOverTime = await Customer.aggregate([
+      { $match: newCustomersOverTimeMatch },
       {
         $group: {
           _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
@@ -860,14 +889,6 @@ exports.exportSalesReportCSV = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
-    // Validate date range
-    if (!startDate || !endDate) {
-      return res.status(400).json({
-        success: false,
-        message: "Start date and end date are required",
-      });
-    }
-
     // Implementation placeholder for CSV export
     // In a real implementation, you'd generate CSV data and set headers
     res.status(200).send("CSV export functionality to be implemented");
@@ -890,14 +911,6 @@ exports.exportSalesReportPDF = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
-    // Validate date range
-    if (!startDate || !endDate) {
-      return res.status(400).json({
-        success: false,
-        message: "Start date and end date are required",
-      });
-    }
-
     // Implementation placeholder for PDF export
     // In a real implementation, you'd generate PDF data and set headers
     res.status(200).send("PDF export functionality to be implemented");
@@ -919,14 +932,6 @@ exports.exportSalesReportPDF = async (req, res) => {
 exports.exportInventoryReportCSV = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
-
-    // Validate date range
-    if (!startDate || !endDate) {
-      return res.status(400).json({
-        success: false,
-        message: "Start date and end date are required",
-      });
-    }
 
     // Implementation placeholder for CSV export
     res
@@ -951,14 +956,6 @@ exports.exportInventoryReportPDF = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
-    // Validate date range
-    if (!startDate || !endDate) {
-      return res.status(400).json({
-        success: false,
-        message: "Start date and end date are required",
-      });
-    }
-
     // Implementation placeholder for PDF export
     res
       .status(200)
@@ -982,14 +979,6 @@ exports.exportStaffReportCSV = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
-    // Validate date range
-    if (!startDate || !endDate) {
-      return res.status(400).json({
-        success: false,
-        message: "Start date and end date are required",
-      });
-    }
-
     // Implementation placeholder for CSV export
     res.status(200).send("Staff CSV export functionality to be implemented");
   } catch (error) {
@@ -1010,14 +999,6 @@ exports.exportStaffReportCSV = async (req, res) => {
 exports.exportStaffReportPDF = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
-
-    // Validate date range
-    if (!startDate || !endDate) {
-      return res.status(400).json({
-        success: false,
-        message: "Start date and end date are required",
-      });
-    }
 
     // Implementation placeholder for PDF export
     res.status(200).send("Staff PDF export functionality to be implemented");
@@ -1040,14 +1021,6 @@ exports.exportCustomerReportCSV = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
-    // Validate date range
-    if (!startDate || !endDate) {
-      return res.status(400).json({
-        success: false,
-        message: "Start date and end date are required",
-      });
-    }
-
     // Implementation placeholder for CSV export
     res.status(200).send("Customer CSV export functionality to be implemented");
   } catch (error) {
@@ -1068,14 +1041,6 @@ exports.exportCustomerReportCSV = async (req, res) => {
 exports.exportCustomerReportPDF = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
-
-    // Validate date range
-    if (!startDate || !endDate) {
-      return res.status(400).json({
-        success: false,
-        message: "Start date and end date are required",
-      });
-    }
 
     // Implementation placeholder for PDF export
     res.status(200).send("Customer PDF export functionality to be implemented");

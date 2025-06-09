@@ -1,12 +1,14 @@
 const mongoose = require("mongoose");
-require("dotenv").config();
+const config = require("../src/config");
 
 async function checkDatabase() {
   try {
-    // Connect to MongoDB
-    const mongoUri =
-      process.env.MONGODB_URI || "mongodb://localhost:27017/pos-system";
-    console.log("Connecting to:", mongoUri);
+    // Connect to MongoDB using the same config as the server
+    const mongoUri = config.mongoURI;
+    console.log(
+      "Connecting to:",
+      mongoUri.replace(/\/\/([^:]+):([^@]+)@/, "//***:***@")
+    ); // Hide credentials
 
     await mongoose.connect(mongoUri);
     console.log("Connected to MongoDB successfully");
@@ -33,16 +35,76 @@ async function checkDatabase() {
         `\nTransactions collection has ${transactionCount} documents`
       );
 
+      // Check how many transactions have customer data
+      const transactionsWithCustomers = await mongoose.connection.db
+        .collection("transactions")
+        .countDocuments({ customer: { $ne: null } });
+
+      const transactionsWithoutCustomers = await mongoose.connection.db
+        .collection("transactions")
+        .countDocuments({ customer: null });
+
+      console.log(`Transactions with customers: ${transactionsWithCustomers}`);
+      console.log(
+        `Transactions without customers: ${transactionsWithoutCustomers}`
+      );
+
       if (transactionCount > 0) {
-        // Get a sample transaction
-        const sampleTransaction = await mongoose.connection.db
+        // Get a few sample transactions to check customer data
+        const sampleTransactions = await mongoose.connection.db
           .collection("transactions")
-          .findOne();
-        console.log("\nSample transaction:");
-        console.log(JSON.stringify(sampleTransaction, null, 2));
+          .find({})
+          .limit(3)
+          .toArray();
+
+        console.log("\nSample transactions:");
+        sampleTransactions.forEach((transaction, index) => {
+          console.log(`\n--- Transaction ${index + 1} ---`);
+          console.log(`Invoice Number: ${transaction.invoiceNumber}`);
+          console.log(`Customer ID: ${transaction.customer || "null"}`);
+          console.log(`Customer Type: ${typeof transaction.customer}`);
+          console.log(`Total: ${transaction.total}`);
+          console.log(`Date: ${transaction.transactionDate}`);
+        });
+
+        // If there are transactions with customers, show one
+        if (transactionsWithCustomers > 0) {
+          const transactionWithCustomer = await mongoose.connection.db
+            .collection("transactions")
+            .findOne({ customer: { $ne: null } });
+
+          console.log("\n--- Sample transaction WITH customer ---");
+          console.log(
+            `Invoice Number: ${transactionWithCustomer.invoiceNumber}`
+          );
+          console.log(`Customer ID: ${transactionWithCustomer.customer}`);
+          console.log(
+            `Customer Type: ${typeof transactionWithCustomer.customer}`
+          );
+        }
       }
     } else {
       console.log("\nTransactions collection does not exist");
+    }
+
+    // Check customers collection
+    if (collections.find((c) => c.name === "customers")) {
+      const customerCount = await mongoose.connection.db
+        .collection("customers")
+        .countDocuments();
+      console.log(`\nCustomers collection has ${customerCount} documents`);
+
+      if (customerCount > 0) {
+        const sampleCustomer = await mongoose.connection.db
+          .collection("customers")
+          .findOne();
+        console.log("\nSample customer:");
+        console.log(`ID: ${sampleCustomer._id}`);
+        console.log(
+          `Name: ${sampleCustomer.firstName} ${sampleCustomer.lastName}`
+        );
+        console.log(`Phone: ${sampleCustomer.phone || "N/A"}`);
+      }
     }
   } catch (error) {
     console.error("Error:", error);

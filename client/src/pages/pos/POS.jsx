@@ -312,8 +312,11 @@ const POS = () => {
   };
 
   // Updated prepareTransactionData to include loyalty redemption and productSnapshot
-  const prepareTransactionData = () => {
+  const prepareTransactionData = (customerToUse = null) => {
     if (cart.length === 0) return null;
+
+    // Use the provided customer or fall back to selectedCustomer
+    const customer = customerToUse || selectedCustomer;
 
     // Calculate totals
     const subtotal = cart.reduce(
@@ -341,7 +344,7 @@ const POS = () => {
 
     return {
       // Don't set _id - MongoDB will generate this
-      customer: selectedCustomer?._id, // May be null for guest transactions
+      customer: customer?._id, // Use the customer parameter instead of selectedCustomer
       items: cart.map((item) => ({
         product: item._id,
         productSnapshot: {
@@ -487,12 +490,19 @@ const POS = () => {
 
   // Handle customer selection and proceed to checkout
   const handleCustomerSelect = (customer = null) => {
+    console.log("handleCustomerSelect called with customer:", customer);
     setSelectedCustomer(customer);
     setShowCustomerModal(false);
 
+    // Clear any previous completed transaction to ensure we show preview mode
+    setTransaction(null);
+
     // Prepare transaction data and show preview
-    const preparedTransaction = prepareTransactionData();
+    const preparedTransaction = prepareTransactionData(customer);
     console.log("Setting pendingTransaction:", preparedTransaction);
+    console.log("selectedCustomer at time of preparation:", selectedCustomer);
+    console.log("customer parameter:", customer);
+    console.log("customer._id being used:", customer?._id);
     setPendingTransaction(preparedTransaction);
     setShowReceiptPreview(true);
   };
