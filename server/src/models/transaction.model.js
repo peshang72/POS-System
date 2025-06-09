@@ -200,7 +200,13 @@ TransactionSchema.pre("save", async function (next) {
     for (let i = 0; i < this.items.length; i++) {
       const item = this.items[i];
 
-      if (!item.productSnapshot || !item.productSnapshot.name) {
+      // Check if productSnapshot is missing or incomplete (including cost field)
+      if (
+        !item.productSnapshot ||
+        !item.productSnapshot.name ||
+        item.productSnapshot.cost === undefined ||
+        item.productSnapshot.cost === null
+      ) {
         const product = await Product.findById(item.product);
         if (product) {
           item.productSnapshot = {
