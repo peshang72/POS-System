@@ -25,7 +25,10 @@ const ProductForm = ({
       en: initialData.description?.en || "",
       ku: initialData.description?.ku || "",
     },
-    category: initialData.category || "",
+    category:
+      typeof initialData.category === "object"
+        ? initialData.category._id || initialData.category.id || ""
+        : initialData.category || "",
     price: initialData.price || "",
     cost: initialData.cost || "",
     quantity: initialData.quantity || 1,
@@ -75,9 +78,13 @@ const ProductForm = ({
 
     // If there's an initialData.category, set up the category chain
     if (initialData.category) {
-      const selectedCategory = categories.find(
-        (cat) => cat._id === initialData.category
-      );
+      // Handle both string ID and object with _id
+      const categoryId =
+        typeof initialData.category === "object"
+          ? initialData.category._id || initialData.category.id
+          : initialData.category;
+
+      const selectedCategory = categories.find((cat) => cat._id === categoryId);
 
       if (selectedCategory) {
         // Set the initial category chain based on the selected category
@@ -88,9 +95,8 @@ const ProductForm = ({
             let current = categories.find((c) => c._id === catId);
 
             while (current) {
+              chain.unshift(current._id); // Add current category to beginning
               if (current.parent) {
-                // Add each parent to the beginning of the chain
-                chain.unshift(current.parent);
                 // Look for the next parent
                 current = categories.find((c) => c._id === current.parent);
               } else {
@@ -105,8 +111,8 @@ const ProductForm = ({
           const chain = buildCategoryChain(selectedCategory._id);
           if (chain.length > 0) {
             setSelectedParentCategory(chain[0]);
-            setCategoryChain([...chain, selectedCategory._id]);
-            setCurrentLevel(chain.length);
+            setCategoryChain(chain);
+            setCurrentLevel(chain.length - 1);
           }
         } else {
           // This is a top-level category
@@ -187,13 +193,27 @@ const ProductForm = ({
     }
   };
 
+  // Handle keydown events to prevent form submission on Enter key in barcode field
+  const handleBarcodeKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault(); // Prevent form submission
+      // Optionally, you could move focus to the next field
+      const form = e.target.form;
+      const formElements = Array.from(form.elements);
+      const currentIndex = formElements.indexOf(e.target);
+      const nextElement = formElements[currentIndex + 1];
+      if (nextElement && nextElement.type !== "submit") {
+        nextElement.focus();
+      }
+    }
+  };
+
   const handleExistingProductSelect = (product) => {
-    // Copy all product data except barcode
+    // Copy all product data including barcode
     setFormData({
       ...product,
-      barcode: "", // Clear existing barcode
+      barcode: product.barcode || "", // Keep the existing barcode
       _id: undefined, // Clear ID to avoid updating existing product
-      isNewBarcode: true, // Flag to indicate this is a new barcode for an existing product
       // Ensure name and description are properly structured as objects
       name: {
         en: product.name?.en || product.name || "",
@@ -214,6 +234,47 @@ const ProductForm = ({
           ? product.images[0]
           : product.imageUrl || "", // Get image from images array if available
     });
+
+    // Set up category hierarchy for the selected product
+    const selectedCategoryId = product.category?._id || product.category;
+    if (selectedCategoryId && categories) {
+      const selectedCategory = categories.find(
+        (cat) => cat._id === selectedCategoryId
+      );
+
+      if (selectedCategory) {
+        if (selectedCategory.parent) {
+          // This is a child category, build the chain
+          const buildCategoryChain = (catId) => {
+            const chain = [];
+            let current = categories.find((c) => c._id === catId);
+
+            while (current) {
+              chain.unshift(current._id); // Add current category to beginning
+              if (current.parent) {
+                current = categories.find((c) => c._id === current.parent);
+              } else {
+                break;
+              }
+            }
+            return chain;
+          };
+
+          const chain = buildCategoryChain(selectedCategoryId);
+          if (chain.length > 0) {
+            setSelectedParentCategory(chain[0]);
+            setCategoryChain(chain);
+            setCurrentLevel(chain.length - 1);
+          }
+        } else {
+          // This is a top-level category
+          setSelectedParentCategory(selectedCategoryId);
+          setCategoryChain([selectedCategoryId]);
+          setCurrentLevel(0);
+        }
+      }
+    }
+
     setSearchResults([]);
     setSearchQuery("");
     setIsExistingProduct(true);
@@ -479,7 +540,7 @@ const ProductForm = ({
                     className="text-sm font-medium text-white"
                   >
                     {t("products.useExisting") ||
-                      "Use existing product (copy product details and add new barcode)"}
+                      "Use existing product (copy product details with same barcode)"}
                   </label>
                 </div>
 
@@ -603,6 +664,7 @@ const ProductForm = ({
                     name="barcode"
                     value={formData.barcode}
                     onChange={handleChange}
+                    onKeyDown={handleBarcodeKeyDown}
                     className={`w-full h-10 rounded-md border ${
                       errors.barcode ? "border-[#F23557]" : "border-[#363636]"
                     } bg-[#262626] text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#7E3FF2]/20 focus:border-[#7E3FF2]`}
@@ -1062,7 +1124,7 @@ const ProductForm = ({
                 </div>
                 <p className="text-xs text-zinc-400">
                   {t("products.quantityNote") ||
-                    "Note: Identical products (same SKU) share the same barcode and will be added to the existing quantity."}
+                    "Note: Products with the same SKU will share the same barcode and quantities will be combined."}
                 </p>
               </div>
             </div>
