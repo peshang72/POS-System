@@ -23,6 +23,8 @@ import {
 import UpdateNotification from "../ui/UpdateNotification";
 import ElectronInfo from "../ElectronInfo";
 import ServerLogs from "../ServerLogs";
+import axios from "axios";
+import toast from "react-hot-toast";
 
 // Neon Border Component
 const NeonBorder = ({ active, color = "accent" }) => {
@@ -69,7 +71,7 @@ const AnimatedGradient = () => {
 
 const DashboardLayout = () => {
   const { t, i18n } = useTranslation();
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const { canAccessPage } = usePermissions();
   const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
@@ -79,6 +81,7 @@ const DashboardLayout = () => {
   const [textVisible, setTextVisible] = useState(!sidebarCollapsed);
   const sidebarRef = useRef(null);
   const textVisibilityTimeout = useRef(null);
+  const lastPermissionsRef = useRef(null);
 
   // Add CSS animation rules to head
   useEffect(() => {
@@ -143,6 +146,47 @@ const DashboardLayout = () => {
       clearTimeout(textVisibilityTimeout.current);
     };
   }, [isHovering, sidebarCollapsed]);
+
+  // Check for permission updates periodically
+  useEffect(() => {
+    if (!user || !refreshUser) return;
+
+    const checkPermissionUpdates = async () => {
+      try {
+        const updatedUser = await refreshUser();
+        if (updatedUser) {
+          const currentPermissions = JSON.stringify(
+            updatedUser.permissions || {}
+          );
+          const lastPermissions = lastPermissionsRef.current;
+
+          if (lastPermissions && lastPermissions !== currentPermissions) {
+            toast.success(
+              "Your permissions have been updated. Some features may now be available or restricted.",
+              { duration: 4000 }
+            );
+          }
+
+          lastPermissionsRef.current = currentPermissions;
+        }
+      } catch (error) {
+        // Silently handle errors - don't spam the user with error messages
+        console.error("Error checking permission updates:", error);
+      }
+    };
+
+    // Set initial permissions reference
+    if (user.permissions) {
+      lastPermissionsRef.current = JSON.stringify(user.permissions || {});
+    }
+
+    // Check for updates every 30 seconds
+    const interval = setInterval(checkPermissionUpdates, 30000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [user, refreshUser]);
 
   const handleMouseEnter = () => {
     setIsHovering(true);

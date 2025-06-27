@@ -145,6 +145,24 @@ export const AuthProvider = ({ children }) => {
     setUser((prev) => ({ ...prev, ...preferences }));
   };
 
+  // Function to refresh user data from server
+  const refreshUser = async () => {
+    if (!token || !isAuthenticated) {
+      return;
+    }
+
+    try {
+      const response = await axios.get("/api/auth/me");
+      if (response.data.success) {
+        setUser(response.data.data);
+        return response.data.data;
+      }
+    } catch (error) {
+      console.error("Error refreshing user data:", error);
+      // Don't logout on refresh error, just log it
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -155,6 +173,7 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         updateUserPreferences,
+        refreshUser,
       }}
     >
       {children}

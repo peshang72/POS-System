@@ -189,16 +189,27 @@ const UserPermissions = () => {
     const userKey = userId;
 
     setPendingChanges((prev) => {
+      const user = users.find((u) => u._id === userId);
       const userChanges = prev[userKey] || {};
-      const moduleChanges = userChanges[module] || [];
+
+      // Get the current permissions for this module (either from pending changes or user's current permissions)
+      const currentUserPermissions =
+        user?.permissions?.[module] ||
+        rolePermissions[user?.role]?.[module] ||
+        [];
+      const moduleChanges =
+        userChanges[module] !== undefined
+          ? userChanges[module]
+          : currentUserPermissions;
 
       let newModuleChanges;
       if (hasPermission) {
-        newModuleChanges = [
-          ...moduleChanges.filter((a) => a !== action),
-          action,
-        ];
+        // Add the action if it's not already there
+        newModuleChanges = moduleChanges.includes(action)
+          ? moduleChanges
+          : [...moduleChanges, action];
       } else {
+        // Remove the action
         newModuleChanges = moduleChanges.filter((a) => a !== action);
       }
 
@@ -216,11 +227,34 @@ const UserPermissions = () => {
 
   const savePermissionChanges = async () => {
     try {
-      for (const [userId, userPermissions] of Object.entries(pendingChanges)) {
-        await updateUser(userId, { permissions: userPermissions });
+      const updatedUserIds = Object.keys(pendingChanges);
+
+      for (const [userId, changedModules] of Object.entries(pendingChanges)) {
+        const user = users.find((u) => u._id === userId);
+
+        // Start with the user's current permissions or role-based permissions
+        const currentPermissions =
+          user?.permissions || rolePermissions[user?.role] || {};
+
+        // Merge the changed modules with existing permissions
+        const updatedPermissions = {
+          ...currentPermissions,
+          ...changedModules,
+        };
+
+        await updateUser(userId, { permissions: updatedPermissions });
       }
 
       toast.success("Permissions updated successfully");
+
+      // Check if the current user's permissions were updated
+      if (updatedUserIds.includes(currentUser._id)) {
+        toast.success(
+          "Your permissions have been updated. Please refresh the page to see the changes.",
+          { duration: 5000 }
+        );
+      }
+
       setPendingChanges({});
       setHasUnsavedChanges(false);
       fetchUsers(); // Refresh the user data
