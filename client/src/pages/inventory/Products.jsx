@@ -2,6 +2,8 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useProducts } from "../../hooks/useProducts";
 import { useCategories } from "../../hooks/useCategories";
+import { usePermissions } from "../../hooks/usePermissions";
+import PermissionGuard from "../../components/PermissionGuard";
 import { useState, useMemo, useEffect } from "react";
 import axios from "axios";
 
@@ -29,6 +31,7 @@ const Products = () => {
   const navigate = useNavigate();
   const { products, isLoading, error, deleteProduct } = useProducts();
   const { categories } = useCategories();
+  const { hasPermission } = usePermissions();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [productToDelete, setProductToDelete] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
@@ -713,63 +716,71 @@ const Products = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">{t("products.products")}</h1>
         <div className="flex space-x-3">
-          <button
-            onClick={exportProductsToCSV}
-            className="px-4 py-2 rounded-md bg-[#36F2A3] hover:bg-[#2DD38A] text-gray-800 flex items-center gap-2"
-            title="Export products to CSV for label printing"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          {hasPermission("reports", "export") && (
+            <button
+              onClick={exportProductsToCSV}
+              className="px-4 py-2 rounded-md bg-[#36F2A3] hover:bg-[#2DD38A] text-gray-800 flex items-center gap-2"
+              title="Export products to CSV for label printing"
             >
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-            {t("products.exportLabels") || "Export Labels"}
-          </button>
-          <button
-            onClick={() => navigate("/inventory/categories/add")}
-            className="px-4 py-2 rounded-md bg-[#F2B705] hover:bg-[#D9A404] text-gray-800 flex items-center gap-2"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              {t("products.exportLabels") || "Export Labels"}
+            </button>
+          )}
+
+          <PermissionGuard module="categories" action="create">
+            <button
+              onClick={() => navigate("/inventory/categories/add")}
+              className="px-4 py-2 rounded-md bg-[#F2B705] hover:bg-[#D9A404] text-gray-800 flex items-center gap-2"
             >
-              <path d="M3 6h18M3 12h18M3 18h18" />
-            </svg>
-            {t("categories.add") || "Add Category"}
-          </button>
-          <button
-            onClick={() => navigate("/inventory/products/add")}
-            className="px-4 py-2 rounded-md bg-gradient-to-r from-[#7E3FF2] to-[#3D9CF2] hover:from-[#8F50FF] hover:to-[#4EADFF] text-white flex items-center gap-2"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 6h18M3 12h18M3 18h18" />
+              </svg>
+              {t("categories.add") || "Add Category"}
+            </button>
+          </PermissionGuard>
+
+          <PermissionGuard module="products" action="create">
+            <button
+              onClick={() => navigate("/inventory/products/add")}
+              className="px-4 py-2 rounded-md bg-gradient-to-r from-[#7E3FF2] to-[#3D9CF2] hover:from-[#8F50FF] hover:to-[#4EADFF] text-white flex items-center gap-2"
             >
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            {t("products.add")}
-          </button>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              {t("products.add")}
+            </button>
+          </PermissionGuard>
         </div>
       </div>
 
@@ -1004,51 +1015,59 @@ const Products = () => {
                           </td>
                           <td className="px-4 py-4 text-sm text-white text-center">
                             <div className="flex justify-center space-x-3">
-                              <button
-                                onClick={() =>
-                                  navigate(
-                                    `/inventory/products/edit/${product._id}`
-                                  )
-                                }
-                                className="text-[#3D9CF2] hover:text-[#7E3FF2]"
-                                title={t("common.edit") || "Edit"}
-                              >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  className="h-5 w-5"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
+                              <PermissionGuard module="products" action="edit">
+                                <button
+                                  onClick={() =>
+                                    navigate(
+                                      `/inventory/products/edit/${product._id}`
+                                    )
+                                  }
+                                  className="text-[#3D9CF2] hover:text-[#7E3FF2]"
+                                  title={t("common.edit") || "Edit"}
                                 >
-                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                </svg>
-                              </button>
-                              <button
-                                onClick={() => confirmDelete(product)}
-                                className="text-[#F23557] hover:text-[#FF5A77]"
-                                title={t("common.delete") || "Delete"}
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-5 w-5"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  >
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                  </svg>
+                                </button>
+                              </PermissionGuard>
+
+                              <PermissionGuard
+                                module="products"
+                                action="delete"
                               >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  className="h-5 w-5"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
+                                <button
+                                  onClick={() => confirmDelete(product)}
+                                  className="text-[#F23557] hover:text-[#FF5A77]"
+                                  title={t("common.delete") || "Delete"}
                                 >
-                                  <path d="M3 6h18" />
-                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-                                  <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                  <line x1="10" y1="11" x2="10" y2="17" />
-                                  <line x1="14" y1="11" x2="14" y2="17" />
-                                </svg>
-                              </button>
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-5 w-5"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  >
+                                    <path d="M3 6h18" />
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                                    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                    <line x1="10" y1="11" x2="10" y2="17" />
+                                    <line x1="14" y1="11" x2="14" y2="17" />
+                                  </svg>
+                                </button>
+                              </PermissionGuard>
                             </div>
                           </td>
                         </tr>

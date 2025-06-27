@@ -407,6 +407,7 @@ exports.updateUser = async (req, res, next) => {
       role,
       active,
       languagePreference,
+      permissions,
     } = req.body;
 
     // Build update object
@@ -419,6 +420,7 @@ exports.updateUser = async (req, res, next) => {
     if (active !== undefined) updateFields.active = active;
     if (languagePreference !== undefined)
       updateFields.languagePreference = languagePreference;
+    if (permissions !== undefined) updateFields.permissions = permissions;
 
     const user = await User.findByIdAndUpdate(req.params.id, updateFields, {
       new: true,

@@ -2,8 +2,10 @@ import { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "./hooks/useAuth";
+import { usePermissions } from "./hooks/usePermissions";
 import { Toaster } from "react-hot-toast";
 import UpdateNotification from "./components/ui/UpdateNotification";
+import PermissionGuard from "./components/PermissionGuard";
 
 // Layouts
 import AuthLayout from "./components/layouts/AuthLayout";
@@ -23,12 +25,52 @@ import Reports from "./pages/reports/Reports";
 import Settings from "./pages/settings/Settings";
 import GeneralSettings from "./pages/settings/GeneralSettings";
 import LoyaltySettings from "./pages/settings/LoyaltySettings";
+import UserPermissions from "./pages/settings/UserPermissions";
 import Transactions from "./pages/transactions/Transactions";
 import TransactionDetail from "./pages/transactions/TransactionDetail";
 import NotFound from "./pages/NotFound";
 
+// Protected Route Component
+const ProtectedRoute = ({ children, page, requiredModule, requiredAction }) => {
+  const { isAuthenticated } = useAuth();
+  const { canAccessPage, hasPermission } = usePermissions();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
+
+  // Check page-level permissions
+  if (page && !canAccessPage(page)) {
+    return (
+      <PermissionGuard page={page} showFallback>
+        {children}
+      </PermissionGuard>
+    );
+  }
+
+  // Check specific module/action permissions
+  if (
+    requiredModule &&
+    requiredAction &&
+    !hasPermission(requiredModule, requiredAction)
+  ) {
+    return (
+      <PermissionGuard
+        module={requiredModule}
+        action={requiredAction}
+        showFallback
+      >
+        {children}
+      </PermissionGuard>
+    );
+  }
+
+  return children;
+};
+
 function App() {
   const { isAuthenticated, user } = useAuth();
+  const { canAccessPage } = usePermissions();
   const { i18n } = useTranslation();
 
   // Set language direction based on user preference
@@ -71,83 +113,131 @@ function App() {
         <Route element={<DashboardLayout />}>
           <Route
             path="/"
-            element={isAuthenticated ? <Dashboard /> : <Navigate to="/login" />}
+            element={
+              <ProtectedRoute page="dashboard">
+                <Dashboard />
+              </ProtectedRoute>
+            }
           />
           <Route
             path="/pos"
-            element={isAuthenticated ? <POS /> : <Navigate to="/login" />}
+            element={
+              <ProtectedRoute page="pos">
+                <POS />
+              </ProtectedRoute>
+            }
           />
           {/* Inventory Routes */}
           <Route
             path="/inventory/products"
-            element={isAuthenticated ? <Products /> : <Navigate to="/login" />}
+            element={
+              <ProtectedRoute page="products">
+                <Products />
+              </ProtectedRoute>
+            }
           />
           <Route
             path="/inventory/products/add"
             element={
-              isAuthenticated ? <AddProduct /> : <Navigate to="/login" />
+              <ProtectedRoute page="products/add">
+                <AddProduct />
+              </ProtectedRoute>
             }
           />
           <Route
             path="/inventory/products/edit/:id"
             element={
-              isAuthenticated ? <EditProduct /> : <Navigate to="/login" />
+              <ProtectedRoute page="products/edit">
+                <EditProduct />
+              </ProtectedRoute>
             }
           />
           <Route
             path="/inventory/categories/add"
             element={
-              isAuthenticated ? <AddCategory /> : <Navigate to="/login" />
+              <ProtectedRoute page="categories/add">
+                <AddCategory />
+              </ProtectedRoute>
             }
           />
           <Route
             path="/inventory"
             element={
-              isAuthenticated ? (
+              <ProtectedRoute page="products">
                 <Navigate to="/inventory/products" />
-              ) : (
-                <Navigate to="/login" />
-              )
+              </ProtectedRoute>
             }
           />
           <Route
             path="/customers"
-            element={isAuthenticated ? <Customers /> : <Navigate to="/login" />}
+            element={
+              <ProtectedRoute page="customers">
+                <Customers />
+              </ProtectedRoute>
+            }
           />
           <Route
             path="/staff"
-            element={isAuthenticated ? <Staff /> : <Navigate to="/login" />}
+            element={
+              <ProtectedRoute page="staff">
+                <Staff />
+              </ProtectedRoute>
+            }
           />
           <Route
             path="/reports"
-            element={isAuthenticated ? <Reports /> : <Navigate to="/login" />}
+            element={
+              <ProtectedRoute page="reports">
+                <Reports />
+              </ProtectedRoute>
+            }
           />
           <Route
             path="/transactions"
             element={
-              isAuthenticated ? <Transactions /> : <Navigate to="/login" />
+              <ProtectedRoute page="transactions">
+                <Transactions />
+              </ProtectedRoute>
             }
           />
           <Route
             path="/settings"
-            element={isAuthenticated ? <Settings /> : <Navigate to="/login" />}
+            element={
+              <ProtectedRoute page="settings">
+                <Settings />
+              </ProtectedRoute>
+            }
           />
           <Route
             path="/settings/general"
             element={
-              isAuthenticated ? <GeneralSettings /> : <Navigate to="/login" />
+              <ProtectedRoute page="settings">
+                <GeneralSettings />
+              </ProtectedRoute>
             }
           />
           <Route
             path="/settings/loyalty"
             element={
-              isAuthenticated ? <LoyaltySettings /> : <Navigate to="/login" />
+              <ProtectedRoute page="settings">
+                <LoyaltySettings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings/users"
+            element={
+              <ProtectedRoute requiredModule="staff" requiredAction="edit">
+                <UserPermissions />
+              </ProtectedRoute>
             }
           />
           <Route
             path="/transactions/:id"
             element={
-              isAuthenticated ? <TransactionDetail /> : <Navigate to="/login" />
+              <ProtectedRoute page="transactions">
+                <TransactionDetail />
+              </ProtectedRoute>
             }
           />
         </Route>

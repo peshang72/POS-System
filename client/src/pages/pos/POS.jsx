@@ -26,6 +26,8 @@ import { useProducts } from "../../hooks/useProducts";
 import { useCategories } from "../../hooks/useCategories";
 import { useCustomers } from "../../hooks/useCustomers";
 import { useExchangeRate } from "../../hooks/useExchangeRate";
+import { usePermissions } from "../../hooks/usePermissions";
+import PermissionGuard from "../../components/PermissionGuard";
 import CustomerSelectionModal from "../../components/pos/CustomerSelectionModal";
 import ReceiptPreview from "../../components/pos/ReceiptPreview";
 import LoyaltyPointsRedemption from "../../components/pos/LoyaltyPointsRedemption";
@@ -67,6 +69,7 @@ const NotificationToast = ({ message, type = "success", onClose }) => {
 
 const POS = () => {
   const { t } = useTranslation();
+  const { hasPermission } = usePermissions();
   const [cart, setCart] = useState([]);
   const [activeCategory, setActiveCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -903,146 +906,156 @@ const POS = () => {
               <span>{formatPrice(subtotal)}</span>
             </div>
 
-            {/* Discount Type Toggle */}
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-gray-400">{t("pos.discount")}</span>
-              <div className="flex rounded-md overflow-hidden">
-                <button
-                  className={`px-2 py-1 text-xs flex items-center ${
-                    discountType === "percent"
-                      ? "bg-accent text-white"
-                      : "bg-gray-800 text-gray-400"
-                  }`}
-                  onClick={() => setDiscountType("percent")}
-                >
-                  <PercentCircle size={14} className="mr-1" />
-                  Percent
-                </button>
-                <button
-                  className={`px-2 py-1 text-xs flex items-center ${
-                    discountType === "amount"
-                      ? "bg-accent text-white"
-                      : "bg-gray-800 text-gray-400"
-                  }`}
-                  onClick={() => setDiscountType("amount")}
-                >
-                  <DollarSign size={14} className="mr-1" />
-                  Amount
-                </button>
-              </div>
-            </div>
-
-            {/* Discount Input */}
-            {discountType === "percent" ? (
-              <div className="flex items-center gap-2 mb-2">
-                <div className="flex items-center flex-1">
-                  <PercentCircle size={16} className="text-accent mr-1" />
-                  <span className="text-gray-400 text-sm">Percent Off</span>
-                </div>
-                <div className="flex items-center">
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={discountPercent}
-                    onChange={(e) =>
-                      setDiscountPercent(
-                        Math.max(0, Math.min(100, Number(e.target.value)))
-                      )
-                    }
-                    onFocus={(e) => e.target.select()}
-                    className="w-16 bg-gray-800 px-2 py-1 rounded text-right mr-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  />
-                  <span>%</span>
+            {/* Discount Type Toggle - Only show if user has discount permission */}
+            <PermissionGuard module="pos" action="discount">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-gray-400">{t("pos.discount")}</span>
+                <div className="flex rounded-md overflow-hidden">
+                  <button
+                    className={`px-2 py-1 text-xs flex items-center ${
+                      discountType === "percent"
+                        ? "bg-accent text-white"
+                        : "bg-gray-800 text-gray-400"
+                    }`}
+                    onClick={() => setDiscountType("percent")}
+                  >
+                    <PercentCircle size={14} className="mr-1" />
+                    Percent
+                  </button>
+                  <button
+                    className={`px-2 py-1 text-xs flex items-center ${
+                      discountType === "amount"
+                        ? "bg-accent text-white"
+                        : "bg-gray-800 text-gray-400"
+                    }`}
+                    onClick={() => setDiscountType("amount")}
+                  >
+                    <DollarSign size={14} className="mr-1" />
+                    Amount
+                  </button>
                 </div>
               </div>
-            ) : (
-              <div className="flex items-center gap-2 mb-2">
-                <div className="flex items-center flex-1">
-                  <DollarSign size={16} className="text-accent mr-1" />
-                  <span className="text-gray-400 text-sm">Fixed Discount</span>
-                </div>
-                <div className="flex items-center">
-                  {currency === "USD" ? (
-                    <>
-                      <span className="mr-1">$</span>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        value={discountInputText}
-                        onChange={(e) => {
-                          // Only allow numbers
-                          const value = e.target.value.replace(/[^0-9.]/g, "");
-                          setDiscountInputText(value);
 
-                          // Convert to number and update discount amount
-                          if (value === "") {
-                            setDiscountAmount(0);
-                          } else {
-                            const numValue = parseFloat(value);
-                            if (!isNaN(numValue)) {
-                              setDiscountAmount(Math.min(subtotal, numValue));
+              {/* Discount Input */}
+              {discountType === "percent" ? (
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center flex-1">
+                    <PercentCircle size={16} className="text-accent mr-1" />
+                    <span className="text-gray-400 text-sm">Percent Off</span>
+                  </div>
+                  <div className="flex items-center">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={discountPercent}
+                      onChange={(e) =>
+                        setDiscountPercent(
+                          Math.max(0, Math.min(100, Number(e.target.value)))
+                        )
+                      }
+                      onFocus={(e) => e.target.select()}
+                      className="w-16 bg-gray-800 px-2 py-1 rounded text-right mr-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <span>%</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center flex-1">
+                    <DollarSign size={16} className="text-accent mr-1" />
+                    <span className="text-gray-400 text-sm">
+                      Fixed Discount
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    {currency === "USD" ? (
+                      <>
+                        <span className="mr-1">$</span>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          value={discountInputText}
+                          onChange={(e) => {
+                            // Only allow numbers
+                            const value = e.target.value.replace(
+                              /[^0-9.]/g,
+                              ""
+                            );
+                            setDiscountInputText(value);
+
+                            // Convert to number and update discount amount
+                            if (value === "") {
+                              setDiscountAmount(0);
+                            } else {
+                              const numValue = parseFloat(value);
+                              if (!isNaN(numValue)) {
+                                setDiscountAmount(Math.min(subtotal, numValue));
+                              }
                             }
-                          }
-                        }}
-                        onBlur={() => {
-                          // Format the input when leaving the field
-                          if (discountAmount > 0) {
-                            setDiscountInputText(discountAmount.toString());
-                          } else {
-                            setDiscountInputText("");
-                          }
-                        }}
-                        onFocus={(e) => e.target.select()}
-                        className="w-20 bg-gray-800 px-2 py-1 rounded text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                      />
-                    </>
-                  ) : (
-                    <>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        value={discountInputText}
-                        onChange={(e) => {
-                          // Only allow numbers
-                          const value = e.target.value.replace(/[^0-9.]/g, "");
-                          setDiscountInputText(value);
-
-                          // Convert to number and update discount amount
-                          if (value === "") {
-                            setDiscountAmount(0);
-                          } else {
-                            const numValue = parseFloat(value);
-                            if (!isNaN(numValue)) {
-                              // Convert from IQD to USD for internal storage
-                              setDiscountAmount(
-                                Math.min(subtotal, numValue / exchangeRate)
-                              );
+                          }}
+                          onBlur={() => {
+                            // Format the input when leaving the field
+                            if (discountAmount > 0) {
+                              setDiscountInputText(discountAmount.toString());
+                            } else {
+                              setDiscountInputText("");
                             }
-                          }
-                        }}
-                        onBlur={() => {
-                          // Format the input when leaving the field
-                          if (discountAmount > 0) {
-                            const displayValue = (
-                              discountAmount * exchangeRate
-                            ).toString();
-                            setDiscountInputText(displayValue);
-                          } else {
-                            setDiscountInputText("");
-                          }
-                        }}
-                        onFocus={(e) => e.target.select()}
-                        className="w-28 bg-gray-800 px-2 py-1 rounded text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                      />
-                      <span className="ml-1">IQD</span>
-                    </>
-                  )}
+                          }}
+                          onFocus={(e) => e.target.select()}
+                          className="w-20 bg-gray-800 px-2 py-1 rounded text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          value={discountInputText}
+                          onChange={(e) => {
+                            // Only allow numbers
+                            const value = e.target.value.replace(
+                              /[^0-9.]/g,
+                              ""
+                            );
+                            setDiscountInputText(value);
+
+                            // Convert to number and update discount amount
+                            if (value === "") {
+                              setDiscountAmount(0);
+                            } else {
+                              const numValue = parseFloat(value);
+                              if (!isNaN(numValue)) {
+                                // Convert from IQD to USD for internal storage
+                                setDiscountAmount(
+                                  Math.min(subtotal, numValue / exchangeRate)
+                                );
+                              }
+                            }
+                          }}
+                          onBlur={() => {
+                            // Format the input when leaving the field
+                            if (discountAmount > 0) {
+                              const displayValue = (
+                                discountAmount * exchangeRate
+                              ).toString();
+                              setDiscountInputText(displayValue);
+                            } else {
+                              setDiscountInputText("");
+                            }
+                          }}
+                          onFocus={(e) => e.target.select()}
+                          className="w-28 bg-gray-800 px-2 py-1 rounded text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                        <span className="ml-1">IQD</span>
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </PermissionGuard>
 
             {calculatedDiscount > 0 && (
               <div className="flex justify-between mb-2 text-success">
@@ -1067,28 +1080,31 @@ const POS = () => {
               </span>
             </div>
 
-            {/* Regular Discount */}
-            {(discountAmount > 0 || discountPercent > 0) && (
-              <div className="flex justify-between mb-2 text-orange-400">
-                <span>
-                  {t("pos.discount")}
-                  {discountType === "percent" ? ` (${discountPercent}%)` : ""}:
-                </span>
-                <span>
-                  -
-                  {formatPrice(
-                    discountType === "percent"
-                      ? (cart.reduce(
-                          (sum, item) => sum + item.price * item.quantity,
-                          0
-                        ) *
-                          discountPercent) /
-                          100
-                      : discountAmount
-                  )}
-                </span>
-              </div>
-            )}
+            {/* Regular Discount - Only show if user has discount permission */}
+            <PermissionGuard module="pos" action="discount">
+              {(discountAmount > 0 || discountPercent > 0) && (
+                <div className="flex justify-between mb-2 text-orange-400">
+                  <span>
+                    {t("pos.discount")}
+                    {discountType === "percent" ? ` (${discountPercent}%)` : ""}
+                    :
+                  </span>
+                  <span>
+                    -
+                    {formatPrice(
+                      discountType === "percent"
+                        ? (cart.reduce(
+                            (sum, item) => sum + item.price * item.quantity,
+                            0
+                          ) *
+                            discountPercent) /
+                            100
+                        : discountAmount
+                    )}
+                  </span>
+                </div>
+              )}
+            </PermissionGuard>
 
             {/* Loyalty Discount */}
             {loyaltyDiscount > 0 && (

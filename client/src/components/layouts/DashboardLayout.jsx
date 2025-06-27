@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../hooks/useAuth";
+import { usePermissions } from "../../hooks/usePermissions";
+import PermissionGuard from "../PermissionGuard";
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -68,6 +70,7 @@ const AnimatedGradient = () => {
 const DashboardLayout = () => {
   const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
+  const { canAccessPage } = usePermissions();
   const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [isHovering, setIsHovering] = useState(false);
@@ -350,41 +353,61 @@ const DashboardLayout = () => {
 
           {/* Navigation */}
           <nav className="px-2 flex-1 space-y-1 relative z-10">
-            <NavItem
-              to="/"
-              icon={LayoutDashboard}
-              label={t("navigation.dashboard")}
-            />
-            <NavItem
-              to="/pos"
-              icon={ShoppingCart}
-              label={t("navigation.pos")}
-            />
-            <NavItem
-              to="/inventory"
-              icon={Package}
-              label={t("navigation.inventory")}
-            />
-            <NavItem
-              to="/customers"
-              icon={Users}
-              label={t("navigation.customers")}
-            />
-            <NavItem
-              to="/staff"
-              icon={UserCircle}
-              label={t("navigation.staff")}
-            />
-            <NavItem
-              to="/reports"
-              icon={BarChart2}
-              label={t("navigation.reports")}
-            />
-            <NavItem
-              to="/settings"
-              icon={Settings}
-              label={t("navigation.settings")}
-            />
+            <PermissionGuard page="dashboard">
+              <NavItem
+                to="/"
+                icon={LayoutDashboard}
+                label={t("navigation.dashboard")}
+              />
+            </PermissionGuard>
+
+            <PermissionGuard page="pos">
+              <NavItem
+                to="/pos"
+                icon={ShoppingCart}
+                label={t("navigation.pos")}
+              />
+            </PermissionGuard>
+
+            <PermissionGuard page="products">
+              <NavItem
+                to="/inventory"
+                icon={Package}
+                label={t("navigation.inventory")}
+              />
+            </PermissionGuard>
+
+            <PermissionGuard page="customers">
+              <NavItem
+                to="/customers"
+                icon={Users}
+                label={t("navigation.customers")}
+              />
+            </PermissionGuard>
+
+            <PermissionGuard page="staff">
+              <NavItem
+                to="/staff"
+                icon={UserCircle}
+                label={t("navigation.staff")}
+              />
+            </PermissionGuard>
+
+            <PermissionGuard page="reports">
+              <NavItem
+                to="/reports"
+                icon={BarChart2}
+                label={t("navigation.reports")}
+              />
+            </PermissionGuard>
+
+            <PermissionGuard page="settings">
+              <NavItem
+                to="/settings"
+                icon={Settings}
+                label={t("navigation.settings")}
+              />
+            </PermissionGuard>
           </nav>
 
           {/* Add ElectronInfo component here */}

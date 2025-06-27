@@ -458,6 +458,10 @@
       "saveError": "Failed to save settings",
       "noSettings": "No settings found"
     },
+    "users": {
+      "title": "User Permissions",
+      "description": "Manage role-based access control"
+    },
     "appUpdates": "Application Updates",
     "checkForUpdates": "Check for Updates",
     "checkingForUpdates": "Checking for updates...",

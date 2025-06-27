@@ -65,6 +65,11 @@ const UserSchema = new mongoose.Schema(
     lastLogin: {
       type: Date,
     },
+    permissions: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+      description: "Custom permissions override for the user",
+    },
   },
   {
     timestamps: true,
