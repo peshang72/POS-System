@@ -1,4 +1,5 @@
 const Product = require("../models/product.model");
+const Inventory = require("../models/inventory.model");
 const { generateEAN13Barcode } = require("../utils/barcodeGenerator");
 
 /**
@@ -27,12 +28,15 @@ exports.createProduct = async (req, res) => {
 
     if (existingSkuProduct) {
       // If product exists, increment its quantity and update cost history
-      existingSkuProduct.quantity += Number(quantity || 1);
+      const addedQuantity = Number(quantity || 1);
+      const addedCost = Number(cost);
+
+      existingSkuProduct.quantity += addedQuantity;
 
       // Add to cost history
       existingSkuProduct.costHistory.push({
-        cost: Number(cost),
-        quantity: Number(quantity || 1),
+        cost: addedCost,
+        quantity: addedQuantity,
         date: new Date(),
       });
 
@@ -50,6 +54,22 @@ exports.createProduct = async (req, res) => {
       }
 
       await existingSkuProduct.save();
+
+      // Create inventory record for this purchase/restock
+      await Inventory.create({
+        product: existingSkuProduct._id,
+        type: "purchase",
+        quantity: addedQuantity,
+        remainingQuantity: addedQuantity,
+        unitCost: addedCost,
+        reference: {
+          type: "purchase",
+          id: existingSkuProduct._id, // Use product ID as reference for manual additions
+        },
+        notes: "Product restocked",
+        performedBy: req.user._id,
+      });
+
       return res.status(200).json(existingSkuProduct);
     }
 
@@ -87,6 +107,21 @@ exports.createProduct = async (req, res) => {
 
     // Save product to database
     await product.save();
+
+    // Create initial inventory record for this product
+    await Inventory.create({
+      product: product._id,
+      type: "purchase",
+      quantity: initialQuantity,
+      remainingQuantity: initialQuantity,
+      unitCost: initialCost,
+      reference: {
+        type: "purchase",
+        id: product._id, // Use product ID as reference for initial stock
+      },
+      notes: "Initial product stock",
+      performedBy: req.user._id,
+    });
 
     // Return created product
     res.status(201).json(product);

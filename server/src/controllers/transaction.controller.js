@@ -329,30 +329,29 @@ exports.createTransaction = asyncHandler(async (req, res) => {
     transaction = transaction[0]; // Unwrap from array
     console.log("Transaction created successfully:", transaction._id);
 
-    // Update product quantities and create inventory records
+    // Update product quantities and create inventory records using FIFO
     if (transaction.items && transaction.items.length > 0) {
       for (const item of transaction.items) {
         // Skip items without a product reference (e.g., custom items)
         if (!item.product) continue;
 
-        // Create inventory record for sale
-        await Inventory.create(
-          [
-            {
-              product: item.product,
-              type: "sale",
-              quantity: item.quantity, // Use positive quantity - model will subtract it
-              remainingQuantity: 0, // Will be calculated in the model
-              reference: {
-                type: "transaction",
-                id: transaction._id,
-              },
-              performedBy: req.user._id,
-            },
-          ],
-          { session }
+        // Process sale using FIFO and get the weighted average cost
+        const fifoResult = await processFIFOSale(
+          item.product,
+          item.quantity,
+          transaction._id,
+          req.user._id,
+          session
         );
+
+        // Update the item's productSnapshot with the FIFO cost
+        if (item.productSnapshot) {
+          item.productSnapshot.cost = fifoResult.weightedAverageCost;
+        }
       }
+
+      // Save the transaction with updated FIFO costs
+      await transaction.save({ session });
     }
 
     // Declare customer variable outside the loyalty points section
@@ -753,4 +752,156 @@ async function updateCustomerLoyaltyPoints(
       transaction: transactionId,
     });
   }
+}
+
+/**
+ * Process a sale using FIFO (First In, First Out) inventory method
+ * This function finds the oldest batches with available quantity and uses their cost
+ * @param {string} productId - The product ID
+ * @param {number} quantityToSell - Quantity to sell
+ * @param {string} transactionId - Transaction ID for reference
+ * @param {string} userId - User performing the sale
+ * @param {object} session - MongoDB session for transaction
+ * @returns {object} - Object containing weighted average cost and inventory records created
+ */
+async function processFIFOSale(
+  productId,
+  quantityToSell,
+  transactionId,
+  userId,
+  session
+) {
+  const Product = mongoose.model("Product");
+
+  // Get the product to check available quantity
+  const product = await Product.findById(productId).session(session);
+  if (!product) {
+    throw new Error("Product not found");
+  }
+
+  // Check if we have enough total quantity
+  if (product.quantity < quantityToSell) {
+    throw new Error(
+      `Insufficient inventory. Available: ${product.quantity}, Requested: ${quantityToSell}`
+    );
+  }
+
+  // Get all purchase inventory records for this product with remaining quantity > 0
+  // Sort by timestamp (oldest first) for FIFO
+  const availableBatches = await Inventory.find({
+    product: productId,
+    type: "purchase",
+    remainingQuantity: { $gt: 0 },
+  })
+    .sort({ timestamp: 1 }) // Oldest first (FIFO)
+    .session(session);
+
+  if (availableBatches.length === 0) {
+    // No purchase batches found, use current product cost as fallback
+    console.warn(
+      `No purchase batches found for product ${productId}, using current product cost`
+    );
+
+    // Create a single inventory record for the sale
+    await Inventory.create(
+      [
+        {
+          product: productId,
+          type: "sale",
+          quantity: quantityToSell,
+          remainingQuantity: 0,
+          unitCost: product.cost,
+          reference: {
+            type: "transaction",
+            id: transactionId,
+          },
+          performedBy: userId,
+        },
+      ],
+      { session }
+    );
+
+    // Update product quantity
+    product.quantity -= quantityToSell;
+    await product.save({ session });
+
+    return {
+      weightedAverageCost: product.cost,
+      batchesUsed: [],
+      totalCost: product.cost * quantityToSell,
+    };
+  }
+
+  let remainingToSell = quantityToSell;
+  let totalCost = 0;
+  const batchesUsed = [];
+  const inventoryRecordsToCreate = [];
+
+  // Process batches in FIFO order
+  for (const batch of availableBatches) {
+    if (remainingToSell <= 0) break;
+
+    const availableInBatch = batch.remainingQuantity;
+    const quantityFromThisBatch = Math.min(remainingToSell, availableInBatch);
+    const costFromThisBatch =
+      (batch.unitCost || product.cost) * quantityFromThisBatch;
+
+    // Update batch remaining quantity
+    batch.remainingQuantity -= quantityFromThisBatch;
+    await batch.save({ session });
+
+    // Track this batch usage
+    batchesUsed.push({
+      batchId: batch._id,
+      quantityUsed: quantityFromThisBatch,
+      unitCost: batch.unitCost || product.cost,
+      batchDate: batch.timestamp,
+    });
+
+    // Add to total cost
+    totalCost += costFromThisBatch;
+    remainingToSell -= quantityFromThisBatch;
+
+    // Create inventory record for this portion of the sale
+    inventoryRecordsToCreate.push({
+      product: productId,
+      type: "sale",
+      quantity: quantityFromThisBatch,
+      remainingQuantity: 0,
+      unitCost: batch.unitCost || product.cost,
+      reference: {
+        type: "transaction",
+        id: transactionId,
+      },
+      notes: `FIFO sale from batch ${batch._id}`,
+      performedBy: userId,
+    });
+  }
+
+  // Create all inventory records
+  if (inventoryRecordsToCreate.length > 0) {
+    await Inventory.create(inventoryRecordsToCreate, { session });
+  }
+
+  // Update product total quantity
+  product.quantity -= quantityToSell;
+  await product.save({ session });
+
+  // Calculate weighted average cost
+  const weightedAverageCost =
+    quantityToSell > 0 ? totalCost / quantityToSell : 0;
+
+  console.log(`FIFO Sale processed for product ${productId}:`, {
+    quantitySold: quantityToSell,
+    weightedAverageCost,
+    batchesUsed: batchesUsed.length,
+    totalCost,
+  });
+
+  return {
+    weightedAverageCost,
+    batchesUsed,
+    totalCost,
+    inventoryRecords: inventoryRecordsToCreate.length,
+  };
 }

@@ -65,12 +65,20 @@ InventorySchema.pre("save", async function (next) {
     }
 
     // Update product quantity based on inventory movement type
+    // Note: Sales are now handled by FIFO logic in transaction controller
     switch (this.type) {
       case "purchase":
+        product.quantity += this.quantity;
+        // For purchases, set remainingQuantity to the full quantity
+        this.remainingQuantity = this.quantity;
+        break;
       case "return":
         product.quantity += this.quantity;
         break;
       case "sale":
+        // Sales quantity updates are now handled by FIFO logic
+        // Don't update product quantity here to avoid double-counting
+        break;
       case "transfer":
         product.quantity -= this.quantity;
         break;
