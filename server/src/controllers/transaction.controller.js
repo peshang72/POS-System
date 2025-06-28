@@ -203,29 +203,23 @@ exports.deleteTransaction = asyncHandler(async (req, res) => {
   session.startTransaction();
 
   try {
-    // Restore inventory quantities for all items with product references
+    // Reverse FIFO operations for all items with product references
     if (transaction.items && transaction.items.length > 0) {
       for (const item of transaction.items) {
         // Skip items without a product reference (e.g., custom items)
         if (!item.product) continue;
 
-        // Create inventory record for return (this will restore the quantity)
-        await Inventory.create(
-          [
-            {
-              product: item.product,
-              type: "return",
-              quantity: item.quantity,
-              remainingQuantity: 0, // Will be calculated in the model
-              reference: {
-                type: "transaction",
-                id: transaction._id,
-              },
-              notes: `Transaction ${transaction.invoiceNumber} deleted - inventory restored`,
-              performedBy: req.user._id,
-            },
-          ],
-          { session }
+        console.log(
+          `Reversing FIFO operations for product ${item.product}, quantity: ${item.quantity}`
+        );
+
+        // Reverse the FIFO sale operations
+        await reverseFIFOSale(
+          item.product,
+          item.quantity,
+          transaction._id,
+          req.user._id,
+          session
         );
       }
     }
@@ -233,10 +227,7 @@ exports.deleteTransaction = asyncHandler(async (req, res) => {
     // Remove the transaction using the actual ObjectId
     await Transaction.findByIdAndDelete(transaction._id).session(session);
 
-    // Optionally, you might want to reverse inventory changes here
-    // This depends on your business logic requirements
-
-    // If customer had loyalty points from this transaction, you might want to deduct them
+    // If customer had loyalty points from this transaction, reverse them
     if (transaction.customer && transaction.loyaltyPointsAwarded) {
       const customer = await Customer.findById(transaction.customer).session(
         session
@@ -315,43 +306,61 @@ exports.createTransaction = asyncHandler(async (req, res) => {
       });
     }
 
-    // Create transaction
-    let transaction = await Transaction.create(
-      [
-        {
-          ...req.body,
-          cashier: req.user._id,
-        },
-      ],
-      { session }
-    );
+    // Prepare transaction data with FIFO costs calculated upfront
+    const transactionData = { ...req.body, cashier: req.user._id };
 
+    // Calculate FIFO costs for all items before creating the transaction
+    if (transactionData.items && transactionData.items.length > 0) {
+      for (const item of transactionData.items) {
+        // Skip items without a product reference (e.g., custom items)
+        if (!item.product) continue;
+
+        console.log(
+          `\n=== CALCULATING FIFO COST FOR PRODUCT ${item.product} ===`
+        );
+        console.log(`Quantity to sell: ${item.quantity}`);
+
+        // Get FIFO cost without processing the sale yet (just for cost calculation)
+        const fifoResult = await calculateFIFOCost(
+          item.product,
+          item.quantity,
+          session
+        );
+
+        console.log(`FIFO Result:`, fifoResult);
+
+        // Set the FIFO cost in productSnapshot before creating transaction
+        if (!item.productSnapshot) {
+          item.productSnapshot = {};
+        }
+        item.productSnapshot.cost = fifoResult.weightedAverageCost;
+
+        console.log(
+          `Set productSnapshot.cost to: ${item.productSnapshot.cost}`
+        );
+      }
+    }
+
+    // Create transaction with FIFO costs already set
+    let transaction = await Transaction.create([transactionData], { session });
     transaction = transaction[0]; // Unwrap from array
     console.log("Transaction created successfully:", transaction._id);
 
-    // Update product quantities and create inventory records using FIFO
+    // Now process the actual inventory movements
     if (transaction.items && transaction.items.length > 0) {
       for (const item of transaction.items) {
         // Skip items without a product reference (e.g., custom items)
         if (!item.product) continue;
 
-        // Process sale using FIFO and get the weighted average cost
-        const fifoResult = await processFIFOSale(
+        // Process the actual sale and create inventory records
+        await processFIFOSale(
           item.product,
           item.quantity,
           transaction._id,
           req.user._id,
           session
         );
-
-        // Update the item's productSnapshot with the FIFO cost
-        if (item.productSnapshot) {
-          item.productSnapshot.cost = fifoResult.weightedAverageCost;
-        }
       }
-
-      // Save the transaction with updated FIFO costs
-      await transaction.save({ session });
     }
 
     // Declare customer variable outside the loyalty points section
@@ -755,6 +764,155 @@ async function updateCustomerLoyaltyPoints(
 }
 
 /**
+ * Calculate FIFO cost without processing the sale
+ * This function calculates what the FIFO cost would be without actually updating inventory
+ * @param {string} productId - The product ID
+ * @param {number} quantityToSell - Quantity to sell
+ * @param {object} session - MongoDB session for transaction
+ * @returns {object} - Object containing weighted average cost calculation
+ */
+async function calculateFIFOCost(productId, quantityToSell, session) {
+  const Product = mongoose.model("Product");
+
+  // Get the product to check available quantity
+  const product = await Product.findById(productId).session(session);
+  if (!product) {
+    throw new Error("Product not found");
+  }
+
+  // Check if we have enough total quantity
+  if (product.quantity < quantityToSell) {
+    throw new Error(
+      `Insufficient inventory. Available: ${product.quantity}, Requested: ${quantityToSell}`
+    );
+  }
+
+  // Get all purchase inventory records for this product with remaining quantity > 0
+  // Sort by timestamp (oldest first) for FIFO
+  const availableBatches = await Inventory.find({
+    product: productId,
+    type: "purchase",
+    remainingQuantity: { $gt: 0 },
+  })
+    .sort({ timestamp: 1 }) // Oldest first (FIFO)
+    .session(session);
+
+  // Get ALL purchase batches (including consumed ones) to calculate true legacy inventory
+  const allPurchaseBatches = await Inventory.find({
+    product: productId,
+    type: "purchase",
+  })
+    .sort({ timestamp: 1 })
+    .session(session);
+
+  // Calculate total quantity available in tracked batches
+  const totalBatchQuantity = availableBatches.reduce(
+    (sum, batch) => sum + batch.remainingQuantity,
+    0
+  );
+
+  // Calculate total purchased quantity from all batches
+  const totalPurchasedQuantity = allPurchaseBatches.reduce(
+    (sum, batch) => sum + batch.quantity,
+    0
+  );
+
+  // Calculate how much should remain based on FIFO consumption of historical sales
+  const totalConsumedFromBatches = totalPurchasedQuantity - totalBatchQuantity;
+  const expectedRemainingQuantity =
+    totalPurchasedQuantity - totalConsumedFromBatches;
+
+  // True legacy inventory is when current quantity doesn't match expected remaining quantity
+  const trueLegacyQuantity = Math.max(
+    0,
+    product.quantity - expectedRemainingQuantity
+  );
+
+  if (trueLegacyQuantity > 0) {
+    console.log(
+      `Product ${productId} has ${trueLegacyQuantity} units of true legacy inventory (untracked purchases)`
+    );
+    console.log(
+      `  Current quantity: ${product.quantity}, Expected from batches: ${expectedRemainingQuantity}`
+    );
+  } else if (product.quantity !== totalBatchQuantity) {
+    console.log(
+      `Product ${productId}: Historical sales properly attributed to oldest batches`
+    );
+    console.log(
+      `  Current quantity: ${product.quantity}, Available batches: ${totalBatchQuantity}`
+    );
+  }
+
+  if (availableBatches.length === 0 && trueLegacyQuantity === 0) {
+    // No purchase batches found and no legacy inventory, use current product cost as fallback
+    return {
+      weightedAverageCost: product.cost,
+      totalCost: product.cost * quantityToSell,
+      trueLegacyQuantityUsed: 0,
+    };
+  }
+
+  let remainingToSell = quantityToSell;
+  let totalCost = 0;
+
+  // For true legacy inventory, we need to determine the cost from the oldest available batches
+  // or from consumed batches if we need to reconstruct historical costs
+  let legacyCost = product.cost; // fallback
+  if (trueLegacyQuantity > 0) {
+    // For true legacy inventory, use the weighted average of currently available batches
+    // This assumes the legacy inventory has similar cost characteristics to current inventory
+    if (availableBatches.length > 0) {
+      const availableBatchesTotalCost = availableBatches.reduce(
+        (sum, batch) =>
+          sum + (batch.unitCost || product.cost) * batch.remainingQuantity,
+        0
+      );
+      if (totalBatchQuantity > 0) {
+        legacyCost = availableBatchesTotalCost / totalBatchQuantity;
+      }
+    }
+  }
+
+  // First, handle true legacy inventory if available
+  if (trueLegacyQuantity > 0 && remainingToSell > 0) {
+    const quantityFromLegacy = Math.min(remainingToSell, trueLegacyQuantity);
+    const costFromLegacy = legacyCost * quantityFromLegacy;
+
+    totalCost += costFromLegacy;
+    remainingToSell -= quantityFromLegacy;
+
+    console.log(
+      `Using ${quantityFromLegacy} units from true legacy inventory at cost ${legacyCost} each`
+    );
+  }
+
+  // Then, calculate cost from tracked batches in FIFO order
+  for (const batch of availableBatches) {
+    if (remainingToSell <= 0) break;
+
+    const availableInBatch = batch.remainingQuantity;
+    const quantityFromThisBatch = Math.min(remainingToSell, availableInBatch);
+    const costFromThisBatch =
+      (batch.unitCost || product.cost) * quantityFromThisBatch;
+
+    totalCost += costFromThisBatch;
+    remainingToSell -= quantityFromThisBatch;
+  }
+
+  // Calculate weighted average cost
+  const weightedAverageCost =
+    quantityToSell > 0 ? totalCost / quantityToSell : 0;
+
+  return {
+    weightedAverageCost,
+    totalCost,
+    trueLegacyQuantityUsed:
+      trueLegacyQuantity > 0 ? Math.min(quantityToSell, trueLegacyQuantity) : 0,
+  };
+}
+
+/**
  * Process a sale using FIFO (First In, First Out) inventory method
  * This function finds the oldest batches with available quantity and uses their cost
  * @param {string} productId - The product ID
@@ -796,8 +954,55 @@ async function processFIFOSale(
     .sort({ timestamp: 1 }) // Oldest first (FIFO)
     .session(session);
 
-  if (availableBatches.length === 0) {
-    // No purchase batches found, use current product cost as fallback
+  // Get ALL purchase batches (including consumed ones) to calculate true legacy inventory
+  const allPurchaseBatches = await Inventory.find({
+    product: productId,
+    type: "purchase",
+  })
+    .sort({ timestamp: 1 })
+    .session(session);
+
+  // Calculate total quantity available in tracked batches
+  const totalBatchQuantity = availableBatches.reduce(
+    (sum, batch) => sum + batch.remainingQuantity,
+    0
+  );
+
+  // Calculate total purchased quantity from all batches
+  const totalPurchasedQuantity = allPurchaseBatches.reduce(
+    (sum, batch) => sum + batch.quantity,
+    0
+  );
+
+  // Calculate how much should remain based on FIFO consumption of historical sales
+  const totalConsumedFromBatches = totalPurchasedQuantity - totalBatchQuantity;
+  const expectedRemainingQuantity =
+    totalPurchasedQuantity - totalConsumedFromBatches;
+
+  // True legacy inventory is when current quantity doesn't match expected remaining quantity
+  const trueLegacyQuantity = Math.max(
+    0,
+    product.quantity - expectedRemainingQuantity
+  );
+
+  if (trueLegacyQuantity > 0) {
+    console.log(
+      `Product ${productId} has ${trueLegacyQuantity} units of true legacy inventory (untracked purchases)`
+    );
+    console.log(
+      `  Current quantity: ${product.quantity}, Expected from batches: ${expectedRemainingQuantity}`
+    );
+  } else if (product.quantity !== totalBatchQuantity) {
+    console.log(
+      `Product ${productId}: Historical sales properly attributed to oldest batches`
+    );
+    console.log(
+      `  Current quantity: ${product.quantity}, Available batches: ${totalBatchQuantity}`
+    );
+  }
+
+  if (availableBatches.length === 0 && trueLegacyQuantity === 0) {
+    // No purchase batches found and no legacy inventory, use current product cost as fallback
     console.warn(
       `No purchase batches found for product ${productId}, using current product cost`
     );
@@ -837,7 +1042,61 @@ async function processFIFOSale(
   const batchesUsed = [];
   const inventoryRecordsToCreate = [];
 
-  // Process batches in FIFO order
+  // For true legacy inventory, we need to determine the cost from the oldest available batches
+  // or from consumed batches if we need to reconstruct historical costs
+  let legacyCost = product.cost; // fallback
+  if (trueLegacyQuantity > 0) {
+    // For true legacy inventory, use the weighted average of currently available batches
+    // This assumes the legacy inventory has similar cost characteristics to current inventory
+    if (availableBatches.length > 0) {
+      const availableBatchesTotalCost = availableBatches.reduce(
+        (sum, batch) =>
+          sum + (batch.unitCost || product.cost) * batch.remainingQuantity,
+        0
+      );
+      if (totalBatchQuantity > 0) {
+        legacyCost = availableBatchesTotalCost / totalBatchQuantity;
+      }
+    }
+  }
+
+  // First, handle true legacy inventory if available
+  if (trueLegacyQuantity > 0 && remainingToSell > 0) {
+    const quantityFromLegacy = Math.min(remainingToSell, trueLegacyQuantity);
+    const costFromLegacy = legacyCost * quantityFromLegacy;
+
+    totalCost += costFromLegacy;
+    remainingToSell -= quantityFromLegacy;
+
+    // Track legacy inventory usage
+    batchesUsed.push({
+      batchId: "legacy",
+      quantityUsed: quantityFromLegacy,
+      unitCost: legacyCost,
+      batchDate: "legacy",
+    });
+
+    // Create inventory record for legacy sale
+    inventoryRecordsToCreate.push({
+      product: productId,
+      type: "sale",
+      quantity: quantityFromLegacy,
+      remainingQuantity: 0,
+      unitCost: legacyCost,
+      reference: {
+        type: "transaction",
+        id: transactionId,
+      },
+      notes: `FIFO sale from true legacy inventory (untracked purchases)`,
+      performedBy: userId,
+    });
+
+    console.log(
+      `Using ${quantityFromLegacy} units from true legacy inventory at cost ${legacyCost} each`
+    );
+  }
+
+  // Then, process tracked batches in FIFO order
   for (const batch of availableBatches) {
     if (remainingToSell <= 0) break;
 
@@ -903,5 +1162,143 @@ async function processFIFOSale(
     batchesUsed,
     totalCost,
     inventoryRecords: inventoryRecordsToCreate.length,
+  };
+}
+
+/**
+ * Reverse a FIFO sale by restoring batch quantities and removing sale records
+ * This function finds all sale records created by a transaction and reverses their effects
+ * @param {string} productId - The product ID
+ * @param {number} quantityToReverse - Quantity to reverse (should match original sale)
+ * @param {string} transactionId - Transaction ID that is being deleted
+ * @param {string} userId - User performing the deletion
+ * @param {object} session - MongoDB session for transaction
+ * @returns {object} - Object containing reversal details
+ */
+async function reverseFIFOSale(
+  productId,
+  quantityToReverse,
+  transactionId,
+  userId,
+  session
+) {
+  const Product = mongoose.model("Product");
+
+  // Get the product
+  const product = await Product.findById(productId).session(session);
+  if (!product) {
+    throw new Error("Product not found");
+  }
+
+  // Find all sale inventory records created by this transaction for this product
+  const saleRecords = await Inventory.find({
+    product: productId,
+    type: "sale",
+    "reference.type": "transaction",
+    "reference.id": transactionId,
+  }).session(session);
+
+  if (saleRecords.length === 0) {
+    console.warn(
+      `No sale records found for transaction ${transactionId} and product ${productId}`
+    );
+    // Create a simple return record as fallback
+    await Inventory.create(
+      [
+        {
+          product: productId,
+          type: "return",
+          quantity: quantityToReverse,
+          remainingQuantity: 0,
+          reference: {
+            type: "transaction",
+            id: transactionId,
+          },
+          notes: `Transaction deletion - simple return (no FIFO records found)`,
+          performedBy: userId,
+        },
+      ],
+      { session }
+    );
+    return { reversalMethod: "simple", recordsReversed: 0 };
+  }
+
+  console.log(
+    `Found ${saleRecords.length} sale records to reverse for transaction ${transactionId}`
+  );
+
+  let totalQuantityReversed = 0;
+  const reversalDetails = [];
+
+  // Process each sale record and reverse its effects
+  for (const saleRecord of saleRecords) {
+    console.log(
+      `Reversing sale record: ${saleRecord.quantity} units at cost ${saleRecord.unitCost}`
+    );
+
+    // Check if this sale was from a specific batch (has notes indicating batch ID)
+    if (saleRecord.notes && saleRecord.notes.includes("FIFO sale from batch")) {
+      // Extract batch ID from notes (format: "FIFO sale from batch 64f...")
+      const batchIdMatch = saleRecord.notes.match(
+        /FIFO sale from batch ([a-f0-9]{24})/
+      );
+
+      if (batchIdMatch) {
+        const batchId = batchIdMatch[1];
+
+        // Find the batch and restore its remaining quantity
+        const batch = await Inventory.findById(batchId).session(session);
+        if (batch && batch.type === "purchase") {
+          batch.remainingQuantity += saleRecord.quantity;
+          await batch.save({ session });
+
+          console.log(
+            `Restored ${saleRecord.quantity} units to batch ${batchId}, new remaining: ${batch.remainingQuantity}`
+          );
+
+          reversalDetails.push({
+            type: "batch_restoration",
+            batchId: batchId,
+            quantityRestored: saleRecord.quantity,
+            newRemainingQuantity: batch.remainingQuantity,
+          });
+        } else {
+          console.warn(`Batch ${batchId} not found or not a purchase record`);
+        }
+      }
+    } else if (
+      saleRecord.notes &&
+      saleRecord.notes.includes("legacy inventory")
+    ) {
+      // This was from legacy inventory, no specific batch to restore
+      console.log(`Sale was from legacy inventory, no batch to restore`);
+      reversalDetails.push({
+        type: "legacy_reversal",
+        quantity: saleRecord.quantity,
+      });
+    }
+
+    totalQuantityReversed += saleRecord.quantity;
+
+    // Remove the sale record
+    await Inventory.findByIdAndDelete(saleRecord._id).session(session);
+  }
+
+  // Restore product quantity
+  product.quantity += totalQuantityReversed;
+  await product.save({ session });
+
+  console.log(`FIFO Sale reversal completed for product ${productId}:`, {
+    quantityReversed: totalQuantityReversed,
+    recordsReversed: saleRecords.length,
+    newProductQuantity: product.quantity,
+  });
+
+  return {
+    reversalMethod: "fifo",
+    quantityReversed: totalQuantityReversed,
+    recordsReversed: saleRecords.length,
+    reversalDetails: reversalDetails,
+    newProductQuantity: product.quantity,
   };
 }

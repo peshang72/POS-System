@@ -200,21 +200,46 @@ TransactionSchema.pre("save", async function (next) {
     for (let i = 0; i < this.items.length; i++) {
       const item = this.items[i];
 
-      // Check if productSnapshot is missing or incomplete (including cost field)
-      if (
-        !item.productSnapshot ||
-        !item.productSnapshot.name ||
-        item.productSnapshot.cost === undefined ||
-        item.productSnapshot.cost === null
-      ) {
+      // Skip if no product reference
+      if (!item.product) continue;
+
+      // Check if productSnapshot is missing or incomplete
+      if (!item.productSnapshot || !item.productSnapshot.name) {
         const product = await Product.findById(item.product);
         if (product) {
           item.productSnapshot = {
             name: product.name,
             sku: product.sku,
             price: product.price,
-            cost: product.cost,
+            // Preserve FIFO cost if already set, otherwise use product cost
+            cost:
+              item.productSnapshot?.cost !== undefined
+                ? item.productSnapshot.cost
+                : product.cost,
           };
+        }
+      } else {
+        // ProductSnapshot exists but might be missing some fields
+        const product = await Product.findById(item.product);
+        if (product) {
+          // Only update missing fields, preserve existing ones (especially cost from FIFO)
+          if (!item.productSnapshot.name) {
+            item.productSnapshot.name = product.name;
+          }
+          if (!item.productSnapshot.sku) {
+            item.productSnapshot.sku = product.sku;
+          }
+          if (!item.productSnapshot.price) {
+            item.productSnapshot.price = product.price;
+          }
+          // Only set cost if it's completely missing (undefined or null)
+          // This preserves FIFO cost that was set in the controller
+          if (
+            item.productSnapshot.cost === undefined ||
+            item.productSnapshot.cost === null
+          ) {
+            item.productSnapshot.cost = product.cost;
+          }
         }
       }
     }

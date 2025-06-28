@@ -687,3 +687,343 @@ async function updateCustomerLoyaltyPoints(
     });
   }
 }
+
+/**
+ * Calculate FIFO cost without processing the sale
+ * This function calculates what the FIFO cost would be without actually updating inventory
+ * @param {string} productId - The product ID
+ * @param {number} quantityToSell - Quantity to sell
+ * @param {object} session - MongoDB session for transaction
+ * @returns {object} - Object containing weighted average cost calculation
+ */
+async function calculateFIFOCost(productId, quantityToSell, session) {
+  const Product = mongoose.model("Product");
+
+  // Get the product to check available quantity
+  const product = await Product.findById(productId).session(session);
+  if (!product) {
+    throw new Error("Product not found");
+  }
+
+  // Check if we have enough total quantity
+  if (product.quantity < quantityToSell) {
+    throw new Error(
+      `Insufficient inventory. Available: ${product.quantity}, Requested: ${quantityToSell}`
+    );
+  }
+
+  // Get all purchase inventory records for this product with remaining quantity > 0
+  // Sort by timestamp (oldest first) for FIFO
+  const availableBatches = await Inventory.find({
+    product: productId,
+    type: "purchase",
+    remainingQuantity: { $gt: 0 },
+  })
+    .sort({ timestamp: 1 }) // Oldest first (FIFO)
+    .session(session);
+
+  // Calculate total quantity available in tracked batches
+  const totalBatchQuantity = availableBatches.reduce(
+    (sum, batch) => sum + batch.remainingQuantity,
+    0
+  );
+
+  // Check if there's a discrepancy (product sold before FIFO implementation)
+  const legacyQuantity = Math.max(0, product.quantity - totalBatchQuantity);
+
+  if (legacyQuantity > 0) {
+    console.log(
+      `Product ${productId} has ${legacyQuantity} units of legacy inventory (sold before FIFO tracking)`
+    );
+  }
+
+  if (availableBatches.length === 0 && legacyQuantity === 0) {
+    // No purchase batches found and no legacy inventory, use current product cost as fallback
+    return {
+      weightedAverageCost: product.cost,
+      totalCost: product.cost * quantityToSell,
+      legacyQuantityUsed: 0,
+    };
+  }
+
+  let remainingToSell = quantityToSell;
+  let totalCost = 0;
+
+  // Calculate cost of currently available batches for legacy inventory pricing
+  let legacyCost = product.cost; // fallback to product cost
+  if (availableBatches.length > 0) {
+    // Calculate weighted average cost of available batches only
+    const availableBatchesTotalCost = availableBatches.reduce(
+      (sum, batch) =>
+        sum + (batch.unitCost || product.cost) * batch.remainingQuantity,
+      0
+    );
+    const availableBatchesTotalQuantity = availableBatches.reduce(
+      (sum, batch) => sum + batch.remainingQuantity,
+      0
+    );
+
+    if (availableBatchesTotalQuantity > 0) {
+      legacyCost = availableBatchesTotalCost / availableBatchesTotalQuantity;
+    }
+  }
+
+  // First, use legacy inventory (oldest conceptually) if available
+  if (legacyQuantity > 0 && remainingToSell > 0) {
+    const quantityFromLegacy = Math.min(remainingToSell, legacyQuantity);
+    const costFromLegacy = legacyCost * quantityFromLegacy; // Use cost of available batches for legacy inventory
+
+    totalCost += costFromLegacy;
+    remainingToSell -= quantityFromLegacy;
+
+    console.log(
+      `Using ${quantityFromLegacy} units from legacy inventory at cost ${legacyCost} each (based on available batches)`
+    );
+  }
+
+  // Then, calculate cost from tracked batches in FIFO order
+  for (const batch of availableBatches) {
+    if (remainingToSell <= 0) break;
+
+    const availableInBatch = batch.remainingQuantity;
+    const quantityFromThisBatch = Math.min(remainingToSell, availableInBatch);
+    const costFromThisBatch =
+      (batch.unitCost || product.cost) * quantityFromThisBatch;
+
+    totalCost += costFromThisBatch;
+    remainingToSell -= quantityFromThisBatch;
+  }
+
+  // Calculate weighted average cost
+  const weightedAverageCost =
+    quantityToSell > 0 ? totalCost / quantityToSell : 0;
+
+  return {
+    weightedAverageCost,
+    totalCost,
+    legacyQuantityUsed:
+      legacyQuantity > 0 ? Math.min(quantityToSell, legacyQuantity) : 0,
+  };
+}
+
+/**
+ * Process a sale using FIFO (First In, First Out) inventory method
+ * This function finds the oldest batches with available quantity and uses their cost
+ * @param {string} productId - The product ID
+ * @param {number} quantityToSell - Quantity to sell
+ * @param {string} transactionId - Transaction ID for reference
+ * @param {string} userId - User performing the sale
+ * @param {object} session - MongoDB session for transaction
+ * @returns {object} - Object containing weighted average cost and inventory records created
+ */
+async function processFIFOSale(
+  productId,
+  quantityToSell,
+  transactionId,
+  userId,
+  session
+) {
+  const Product = mongoose.model("Product");
+
+  // Get the product to check available quantity
+  const product = await Product.findById(productId).session(session);
+  if (!product) {
+    throw new Error("Product not found");
+  }
+
+  // Check if we have enough total quantity
+  if (product.quantity < quantityToSell) {
+    throw new Error(
+      `Insufficient inventory. Available: ${product.quantity}, Requested: ${quantityToSell}`
+    );
+  }
+
+  // Get all purchase inventory records for this product with remaining quantity > 0
+  // Sort by timestamp (oldest first) for FIFO
+  const availableBatches = await Inventory.find({
+    product: productId,
+    type: "purchase",
+    remainingQuantity: { $gt: 0 },
+  })
+    .sort({ timestamp: 1 }) // Oldest first (FIFO)
+    .session(session);
+
+  // Calculate total quantity available in tracked batches
+  const totalBatchQuantity = availableBatches.reduce(
+    (sum, batch) => sum + batch.remainingQuantity,
+    0
+  );
+
+  // Check if there's a discrepancy (product sold before FIFO implementation)
+  const legacyQuantity = Math.max(0, product.quantity - totalBatchQuantity);
+
+  if (legacyQuantity > 0) {
+    console.log(
+      `Product ${productId} has ${legacyQuantity} units of legacy inventory (sold before FIFO tracking)`
+    );
+  }
+
+  if (availableBatches.length === 0 && legacyQuantity === 0) {
+    // No purchase batches found and no legacy inventory, use current product cost as fallback
+    console.warn(
+      `No purchase batches found for product ${productId}, using current product cost`
+    );
+
+    // Create a single inventory record for the sale
+    await Inventory.create(
+      [
+        {
+          product: productId,
+          type: "sale",
+          quantity: quantityToSell,
+          remainingQuantity: 0,
+          unitCost: product.cost,
+          reference: {
+            type: "transaction",
+            id: transactionId,
+          },
+          performedBy: userId,
+        },
+      ],
+      { session }
+    );
+
+    // Update product quantity
+    product.quantity -= quantityToSell;
+    await product.save({ session });
+
+    return {
+      weightedAverageCost: product.cost,
+      batchesUsed: [],
+      totalCost: product.cost * quantityToSell,
+    };
+  }
+
+  let remainingToSell = quantityToSell;
+  let totalCost = 0;
+  const batchesUsed = [];
+  const inventoryRecordsToCreate = [];
+
+  // Calculate cost of currently available batches for legacy inventory pricing
+  let legacyCost = product.cost; // fallback to product cost
+  if (availableBatches.length > 0) {
+    // Calculate weighted average cost of available batches only
+    const availableBatchesTotalCost = availableBatches.reduce(
+      (sum, batch) =>
+        sum + (batch.unitCost || product.cost) * batch.remainingQuantity,
+      0
+    );
+    const availableBatchesTotalQuantity = availableBatches.reduce(
+      (sum, batch) => sum + batch.remainingQuantity,
+      0
+    );
+
+    if (availableBatchesTotalQuantity > 0) {
+      legacyCost = availableBatchesTotalCost / availableBatchesTotalQuantity;
+    }
+  }
+
+  // First, handle legacy inventory (oldest conceptually) if available
+  if (legacyQuantity > 0 && remainingToSell > 0) {
+    const quantityFromLegacy = Math.min(remainingToSell, legacyQuantity);
+    const costFromLegacy = legacyCost * quantityFromLegacy; // Use cost of available batches for legacy inventory
+
+    totalCost += costFromLegacy;
+    remainingToSell -= quantityFromLegacy;
+
+    // Track legacy inventory usage
+    batchesUsed.push({
+      batchId: "legacy",
+      quantityUsed: quantityFromLegacy,
+      unitCost: legacyCost,
+      batchDate: "legacy",
+    });
+
+    // Create inventory record for legacy sale
+    inventoryRecordsToCreate.push({
+      product: productId,
+      type: "sale",
+      quantity: quantityFromLegacy,
+      remainingQuantity: 0,
+      unitCost: legacyCost,
+      reference: {
+        type: "transaction",
+        id: transactionId,
+      },
+      notes: `FIFO sale from legacy inventory (pre-FIFO tracking) - cost based on available batches`,
+      performedBy: userId,
+    });
+
+    console.log(
+      `Using ${quantityFromLegacy} units from legacy inventory at cost ${legacyCost} each (based on available batches)`
+    );
+  }
+
+  // Then, process tracked batches in FIFO order
+  for (const batch of availableBatches) {
+    if (remainingToSell <= 0) break;
+
+    const availableInBatch = batch.remainingQuantity;
+    const quantityFromThisBatch = Math.min(remainingToSell, availableInBatch);
+    const costFromThisBatch =
+      (batch.unitCost || product.cost) * quantityFromThisBatch;
+
+    // Update batch remaining quantity
+    batch.remainingQuantity -= quantityFromThisBatch;
+    await batch.save({ session });
+
+    // Track this batch usage
+    batchesUsed.push({
+      batchId: batch._id,
+      quantityUsed: quantityFromThisBatch,
+      unitCost: batch.unitCost || product.cost,
+      batchDate: batch.timestamp,
+    });
+
+    // Add to total cost
+    totalCost += costFromThisBatch;
+    remainingToSell -= quantityFromThisBatch;
+
+    // Create inventory record for this portion of the sale
+    inventoryRecordsToCreate.push({
+      product: productId,
+      type: "sale",
+      quantity: quantityFromThisBatch,
+      remainingQuantity: 0,
+      unitCost: batch.unitCost || product.cost,
+      reference: {
+        type: "transaction",
+        id: transactionId,
+      },
+      notes: `FIFO sale from batch ${batch._id}`,
+      performedBy: userId,
+    });
+  }
+
+  // Create all inventory records
+  if (inventoryRecordsToCreate.length > 0) {
+    await Inventory.create(inventoryRecordsToCreate, { session });
+  }
+
+  // Update product total quantity
+  product.quantity -= quantityToSell;
+  await product.save({ session });
+
+  // Calculate weighted average cost
+  const weightedAverageCost =
+    quantityToSell > 0 ? totalCost / quantityToSell : 0;
+
+  console.log(`FIFO Sale processed for product ${productId}:`, {
+    quantitySold: quantityToSell,
+    weightedAverageCost,
+    batchesUsed: batchesUsed.length,
+    totalCost,
+  });
+
+  return {
+    weightedAverageCost,
+    batchesUsed,
+    totalCost,
+    inventoryRecords: inventoryRecordsToCreate.length,
+  };
+}

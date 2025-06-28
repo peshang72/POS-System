@@ -139,7 +139,7 @@
     "descriptionEn": "Description (English)",
     "descriptionKu": "Description (Kurdish)",
     "chooseSource": "Choose Product Source",
-    "useExisting": "Use existing product (copy product details and add new barcode)",
+    "useExisting": "Use existing product (copy product details with same barcode)",
     "searchProducts": "Search Products",
     "searchPlaceholder": "Search by name, SKU, or barcode...",
     "stock": "Stock",
@@ -147,9 +147,24 @@
     "pricingInventory": "Pricing & Inventory",
     "active": "Active product (available for sale)",
     "addSuccess": "Product added successfully",
-    "quantityNote": "Note: Each barcode represents a single item. Quantity will be incremented by 1 automatically.",
+    "updateSuccess": "Product updated successfully",
+    "quantityNote": "Note: Products with the same SKU will share the same barcode and quantities will be combined.",
     "noProductsFound": "No products found",
-    "units": "units"
+    "units": "units",
+    "parentCategory": "Parent Category",
+    "subCategory": "Sub Category",
+    "selectSubCategory": "Select Sub-Category",
+    "selectedCategory": "Selected Category",
+    "image": "Product Image",
+    "imageUrlPlaceholder": "Enter image URL",
+    "imageHint": "Enter a URL for the product image. The image will be stored as a reference.",
+    "removeImage": "Remove image",
+    "batchCost": "Batch Cost",
+    "costExplanation": "This cost will be recorded for this specific batch of products. The average cost will be calculated automatically.",
+    "notFound": "Product not found",
+    "costHistory": "Cost History",
+    "date": "Date",
+    "total": "Total"
   },
   "store": {
     "name": "Lîstik Store",
@@ -251,7 +266,9 @@
     "reset": "Reset",
     "create": "Create",
     "update": "Update",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "hide": "Hide",
+    "show": "Show"
   },
   "language": {
     "english": "English",
@@ -264,7 +281,8 @@
     "invalidNumber": "Please enter a valid number",
     "barcodeExists": "This barcode already exists",
     "generalError": "An error occurred. Please try again.",
-    "passwordLength": "Password must be at least 6 characters"
+    "passwordLength": "Password must be at least 6 characters",
+    "requiredCategory": "Please select a category"
   },
   "errors": {
     "generalError": "An error occurred. Please try again."
@@ -457,6 +475,10 @@
       "saveSuccess": "Settings saved successfully",
       "saveError": "Failed to save settings",
       "noSettings": "No settings found"
+    },
+    "users": {
+      "title": "User Permissions",
+      "description": "Manage role-based access control"
     },
     "appUpdates": "Application Updates",
     "checkForUpdates": "Check for Updates",
