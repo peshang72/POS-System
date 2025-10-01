@@ -5,6 +5,7 @@ const Inventory = require("../models/inventory.model");
 const User = require("../models/user.model");
 const Customer = require("../models/customer.model");
 const StaffActivity = require("../models/staffActivity.model");
+const Expense = require("../models/expense.model");
 
 /**
  * @desc    Get sales report
@@ -171,17 +172,48 @@ exports.getSalesReport = async (req, res) => {
       { $sort: { total: -1 } },
     ]);
 
+    // Calculate total expenses for the same date range
+    let totalExpenses = 0;
+    if (startDate && endDate && startDate !== "null" && endDate !== "null") {
+      const expenseMatchQuery = {
+        expenseDate: {
+          $gte: parsedStartDate,
+          $lte: parsedEndDate,
+        },
+        status: { $in: ["approved", "paid"] }, // Only count approved/paid expenses
+      };
+
+      const expenseSummary = await Expense.aggregate([
+        { $match: expenseMatchQuery },
+        {
+          $group: {
+            _id: null,
+            totalExpenses: { $sum: "$amountInBaseCurrency" },
+          },
+        },
+      ]);
+
+      totalExpenses = expenseSummary.length > 0 ? expenseSummary[0].totalExpenses : 0;
+    }
+
+    // Calculate net profit (gross profit - expenses)
+    const summary = summaryData.length ? summaryData[0] : {
+      totalSales: 0,
+      totalTransactions: 0,
+      averageOrderValue: 0,
+      grossProfit: 0,
+    };
+
+    const netProfit = summary.grossProfit - totalExpenses;
+
     res.status(200).json({
       success: true,
       data: {
-        summary: summaryData.length
-          ? summaryData[0]
-          : {
-              totalSales: 0,
-              totalTransactions: 0,
-              averageOrderValue: 0,
-              grossProfit: 0,
-            },
+        summary: {
+          ...summary,
+          totalExpenses,
+          netProfit,
+        },
         salesByDate,
         topProducts,
         paymentMethods,

@@ -28,6 +28,7 @@ import LoyaltySettings from "./pages/settings/LoyaltySettings";
 import UserPermissions from "./pages/settings/UserPermissions";
 import Transactions from "./pages/transactions/Transactions";
 import TransactionDetail from "./pages/transactions/TransactionDetail";
+import Expenses from "./pages/expenses/Expenses";
 import NotFound from "./pages/NotFound";
 
 // Protected Route Component
@@ -189,6 +190,14 @@ function App() {
             element={
               <ProtectedRoute page="reports">
                 <Reports />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/expenses"
+            element={
+              <ProtectedRoute page="expenses">
+                <Expenses />
               </ProtectedRoute>
             }
           />

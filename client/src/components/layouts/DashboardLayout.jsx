@@ -19,6 +19,7 @@ import {
   ChevronRight,
   ChevronLeft,
   Gamepad2,
+  DollarSign,
 } from "lucide-react";
 import UpdateNotification from "../ui/UpdateNotification";
 import ElectronInfo from "../ElectronInfo";
@@ -442,6 +443,14 @@ const DashboardLayout = () => {
                 to="/reports"
                 icon={BarChart2}
                 label={t("navigation.reports")}
+              />
+            </PermissionGuard>
+
+            <PermissionGuard page="expenses">
+              <NavItem
+                to="/expenses"
+                icon={DollarSign}
+                label={t("navigation.expenses")}
               />
             </PermissionGuard>
 

@@ -13,6 +13,7 @@ const reportRoutes = require("./report.routes");
 const dashboardRoutes = require("./dashboard.routes");
 const staffRoutes = require("./staff.routes");
 const loyaltyRoutes = require("./loyalty.routes");
+const expenseRoutes = require("./expense.routes");
 
 // Mount routes
 router.use("/auth", authRoutes);
@@ -24,6 +25,7 @@ router.use("/reports", reportRoutes);
 router.use("/dashboard", dashboardRoutes);
 router.use("/staff", staffRoutes);
 router.use("/loyalty", loyaltyRoutes);
+router.use("/expenses", expenseRoutes);
 
 // Basic root route
 router.get("/", (req, res) => {
